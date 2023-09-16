@@ -25,7 +25,7 @@ def count_misclassifications(w, x, d):
     return np.sum(np.absolute(d - d_prime))
 
 
-def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set: dict):
+def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set: dict, plots=False, verb=False):
     epoch = 0
     all_class_corr = False
 
@@ -35,8 +35,10 @@ def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set
     n_misclassifications = []
     n_misclassifications.append(
         count_misclassifications(w_curr, x, class_labels))
-    print(f"Initial weights: [{w_curr[0]}, {w_curr[1]}, {w_curr[2]}]")
-    print(f"N. misclassifications: {n_misclassifications[0]}")
+
+    if verb:
+        print(f"Initial weights: [{w_curr[0]}, {w_curr[1]}, {w_curr[2]}]")
+        print(f"N. misclassifications: {n_misclassifications[0]}")
 
     while not all_class_corr:
 
@@ -60,27 +62,23 @@ def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set
         all_class_corr = (n_misclassifications_curr == 0)
         n_misclassifications.append(n_misclassifications_curr)
 
-    print(f"Training finished! Number of epochs: {epoch}")
+    if verb:
+        print(f"Training finished! Number of epochs: {epoch}")
 
     # Plot misclassifications vs. number of epochs
-    fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
-    ax.plot(list(range(epoch + 1)), n_misclassifications)
-    ax.grid()
-    ax.legend()
-    plt.title("Number of misclassifications vs. epoch number")
-    ax.set_xlabel(r"epoch")
-    ax.set_ylabel(r"# misclassifications")
-    plt.show()
+    if plots:
+        fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
+        ax.plot(list(range(epoch + 1)), n_misclassifications)
+        ax.grid()
+        plt.title("Number of misclassifications vs. epoch number")
+        ax.set_xlabel(r"epoch")
+        ax.set_ylabel(r"# misclassifications")
+        plt.show()
 
-    return w_curr
+    return w_curr, epoch
 
 
-if __name__ == "__main__":
-    random.seed(660603047)
-    np.random.seed(660603047)
-
-    N_x = 100  # Number of training set elements (range of 'i')
-
+def main(n_x, eta, plots=False, verb=False):
     # Pick w_0:
     w_0 = random.uniform(-0.25, 0.25)
     # Pick w_1:
@@ -99,23 +97,24 @@ if __name__ == "__main__":
                   for i in range(N_x)])
 
     # Plot decision region for x1 and x2
-    x1_plt = np.linspace(-1, 1, 10000)
-    x2_plt = (-w_0 - w_1 * x1_plt) / w_2
+    if plots:
+        x1_plt = np.linspace(-1, 1, 10000)
+        x2_plt = (-w_0 - w_1 * x1_plt) / w_2
 
-    fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
-    ax.plot(x1_plt, x2_plt, 'g', label='Decision boundary')
-    ax.plot(X[0, d == 1], X[1, d == 1],
-            'or', label=r'Points in $S_{0}$')
-    ax.plot(X[0, d == 0], X[1, d == 0],
-            'ob', label=r'Points in $S_{1}$')
-    ax.grid()
-    ax.legend()
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-    plt.title("Input training points")
-    ax.set_xlabel(r"$x_{1}$")
-    ax.set_ylabel(r"$x_{2}$")
-    plt.show()
+        fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
+        ax.plot(x1_plt, x2_plt, 'g', label='Decision boundary')
+        ax.plot(X[0, d == 1], X[1, d == 1],
+                'or', label=r'Points in $S_{0}$')
+        ax.plot(X[0, d == 0], X[1, d == 0],
+                'ob', label=r'Points in $S_{1}$')
+        ax.grid()
+        ax.legend()
+        ax.set_xlim([-1, 1])
+        ax.set_ylim([-1, 1])
+        plt.title("Input training points")
+        ax.set_xlabel(r"$x_{1}$")
+        ax.set_ylabel(r"$x_{2}$")
+        plt.show()
 
     # Perceptron Training Algorithm
     w_prime = np.random.uniform(-1, 1, (3,))
@@ -123,29 +122,54 @@ if __name__ == "__main__":
         "X": X_with_ones,
         "d": d
     }
-    est_w = perceptron_training_algorithm(
-        eta=1, w_start_arr=w_prime, train_set=train_set)
+    est_w, n_epoch = perceptron_training_algorithm(
+        eta=eta, w_start_arr=w_prime, train_set=train_set, plots=plots, verb=verb)
 
-    print(f"Actual vs. estimated weights:")
-    print(f"w_0 = {w_0} vs. {est_w[0]}")
-    print(f"w_0 = {w_1} vs. {est_w[1]}")
-    print(f"w_0 = {w_2} vs. {est_w[2]}")
+    if verb:
+        print(f"Actual vs. estimated weights:")
+        print(f"w_0 = {w_0} vs. {est_w[0]}")
+        print(f"w_0 = {w_1} vs. {est_w[1]}")
+        print(f"w_0 = {w_2} vs. {est_w[2]}")
 
     # Plot updated decision region
-    x2_prime_plt = (-est_w[0] - est_w[1] * x1_plt) / est_w[2]
-    fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
-    ax.plot(x1_plt, x2_plt, 'g', label='Decision boundary')
-    ax.plot(X[0, d == 1], X[1, d == 1],
-            'or', label=r'Points in $S_{0}$')
-    ax.plot(X[0, d == 0], X[1, d == 0],
-            'ob', label=r'Points in $S_{1}$')
-    ax.plot(x1_plt, x2_prime_plt, color='black',
-            linestyle='dashed', label="Estimated boundary")
-    ax.grid()
-    ax.legend()
-    ax.set_xlim([-1, 1])
-    ax.set_ylim([-1, 1])
-    plt.title("Input training points")
-    ax.set_xlabel(r"$x_{1}$")
-    ax.set_ylabel(r"$x_{2}$")
-    plt.show()
+    if plots:
+        x2_prime_plt = (-est_w[0] - est_w[1] * x1_plt) / est_w[2]
+        fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
+        ax.plot(x1_plt, x2_plt, 'g', label='Decision boundary')
+        ax.plot(X[0, d == 1], X[1, d == 1],
+                'or', label=r'Points in $S_{0}$')
+        ax.plot(X[0, d == 0], X[1, d == 0],
+                'ob', label=r'Points in $S_{1}$')
+        ax.plot(x1_plt, x2_prime_plt, color='black',
+                linestyle='dashed', label="Estimated boundary")
+        ax.grid()
+        ax.legend()
+        ax.set_xlim([-1, 1])
+        ax.set_ylim([-1, 1])
+        plt.title("Input training points")
+        ax.set_xlabel(r"$x_{1}$")
+        ax.set_ylabel(r"$x_{2}$")
+        plt.show()
+
+    return n_epoch
+
+
+if __name__ == "__main__":
+    # Keeping the seed constant, the random values are the same across multiple
+    # simulations
+    random.seed(660603047)
+    np.random.seed(660603047)
+
+    N_x = 100  # Number of training set elements (range of 'i')
+    eta = 1
+
+    epochs = main(N_x, eta, plots=True, verb=True)
+
+    n_epochs_multi = []
+    # Perform 50 simulations to observe the average number of epochs
+    for i in range(50):
+        n_epochs_multi.append(main(N_x, eta))
+
+    avg_epoch = sum(n_epochs_multi) / 50
+    print(
+        f"Average number of epochs for {N_x} training elements and eta = {eta}: {avg_epoch}")
