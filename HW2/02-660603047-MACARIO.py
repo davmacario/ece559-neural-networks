@@ -32,32 +32,46 @@ def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set
     x = train_set["X"]
     class_labels = train_set["d"]
     w_curr = w_start_arr
-    n_misclassifications = count_misclassifications(w_curr, x, class_labels)
+    n_misclassifications = []
+    n_misclassifications.append(
+        count_misclassifications(w_curr, x, class_labels))
     print(f"Initial weights: [{w_curr[0]}, {w_curr[1]}, {w_curr[2]}]")
-    print(f"N. misclassifications: {n_misclassifications}")
+    print(f"N. misclassifications: {n_misclassifications[0]}")
 
     while not all_class_corr:
 
-        n_misclassifications = 0
+        n_misclassifications_curr = 0
 
         for i in range(x.shape[1]):
             # Evaluate the output with x_i as input
             d_prime = step_function(np.dot(x[:, i], w_curr))
 
             if d_prime == 0 and class_labels[i] == 1:
-                n_misclassifications += 1
+                n_misclassifications_curr += 1
                 w_curr = w_curr + eta * x[:, i]
             elif d_prime == 1 and class_labels[i] == 0:
-                n_misclassifications += 1
+                n_misclassifications_curr += 1
                 w_curr = w_curr - eta * x[:, i]
 
             # print(
             #     f"Weights at epoch {epoch}:\nw_0 = {w_curr[0]}\nw_1 = {w_curr[1]}\nw_2 = {w_curr[2]}")
 
         epoch += 1
-        all_class_corr = (n_misclassifications == 0)
+        all_class_corr = (n_misclassifications_curr == 0)
+        n_misclassifications.append(n_misclassifications_curr)
 
     print(f"Training finished! Number of epochs: {epoch}")
+
+    # Plot misclassifications vs. number of epochs
+    fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
+    ax.plot(list(range(epoch + 1)), n_misclassifications)
+    ax.grid()
+    ax.legend()
+    plt.title("Number of misclassifications vs. epoch number")
+    ax.set_xlabel(r"epoch")
+    ax.set_ylabel(r"# misclassifications")
+    plt.show()
+
     return w_curr
 
 
@@ -65,7 +79,7 @@ if __name__ == "__main__":
     random.seed(660603047)
     np.random.seed(660603047)
 
-    N_x = 1000  # Number of training set elements (range of 'i')
+    N_x = 100  # Number of training set elements (range of 'i')
 
     # Pick w_0:
     w_0 = random.uniform(-0.25, 0.25)
