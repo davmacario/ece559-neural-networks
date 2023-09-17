@@ -84,7 +84,7 @@
 \geometry{letterpaper, portrait, margin=1in}
 \setlength{\headheight}{14.49998pt}
 
-\newcommand\titleofdoc{Homework 2} %%%%% Title
+\newcommand\titleofdoc{Homework 2 - Perceptron Learning Algorithm} %%%%% Title
 \newcommand\GroupName{Davide Macario}
 \newcommand\CurrDate{September 19\textsuperscript{th} 2023}
 
@@ -100,7 +100,6 @@
 
         \vspace{3 cm}
         \Large{\GroupName\\ }
-        \large{Affiliation}
 
 
         \vspace{2 cm} % Optional additional info here
@@ -123,6 +122,49 @@
 \rhead{\thepage}
 \lhead{\GroupName; \titleofdoc}
 
+\section{Introduction}
+
+This homework activity consists in the implementation and analysis of the Perceptron Learning Algorithm implemented for a single-neuron neural network, using the step activation function.
+The analysis is based on changing the learning rate $\eta$ and the number of training elements $n$.
+
+The considered neuron has 2 inputs $x_1$ and $x_2$, while the parameters are $w_0$, $w_1$ and $w_2$.
+As a result, the function implemented by the perceptron is:
+
+\begin{equation}
+    y = u(w_0 + w_1 x_1 + w_2 x_2)
+\end{equation}
+
+Corresponding to the linear boundary $w_0 + w_1 x_1 + w_2 x_2 = 0$.
+
+The experiments have been conducted by taking as actual weights the values $w_0 = 0.1146$, $w_1 = -0.4883$ and $w_2 = -0.3315$.
+The randomly initialized values of the weights, instead, have been set to: $w_0' = 0.2184$, $w_1' = -0.4940$, $w_2' = -0.5434$.
+
 \section{Comments on the results}
+
+The system was initially analyzed by providing a training set $\mathcal{S}$ containing $n = 100$ elements.
+For $\eta = 1$, the PLA converged in 9 epoch.
+Figure \ref{fig:01} shows the behavior of the number of misclassified training elements.
+
+\begin{image}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 
 \end{document}

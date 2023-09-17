@@ -170,6 +170,7 @@ if __name__ == "__main__":
     for i in range(len(N_x)):
         for j in range(len(eta)):
             print("\n")
+            print(f"--> n = {N_x[i]}, eta = {eta[j]}")
             # Keeping the seed constant, the random values are the same across multiple
             # simulations
             random.seed(660603047)
