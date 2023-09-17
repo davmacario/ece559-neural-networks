@@ -1,0 +1,128 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+
+\usepackage{hyperref}   % Change color and style of \ref
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={Overleaf Example},
+    pdfpagemode=FullScreen,
+}
+
+\usepackage{graphicx} % Allows you to insert figures
+\graphicspath{ {./img/} } % images are found in this position
+\counterwithin{figure}{section} % Settings for figure numbering
+\counterwithin{figure}{subsection}
+
+\usepackage{amsmath} % Allows you to do equations
+\usepackage{amsfonts} % Contains math. symbols fonts (e.g., 'real numbers' set)
+\usepackage{fancyhdr} % Formats the header
+\usepackage{geometry} % Formats the paper size, orientation, and margins
+\linespread{1.25} % about 1.5 spacing in Word
+\setlength{\parindent}{0pt} % no paragraph indents
+\setlength{\parskip}{1em} % paragraphs separated by one line
+
+\usepackage{enumitem} % Used to reduce whitespace between list elements
+\setlist[itemize]{noitemsep, topsep=0pt} % Set the whitespace above list to the minimum
+
+\usepackage[style=authoryear-ibid,backend=biber,maxbibnames=99,maxcitenames=2,uniquelist=false,isbn=false,url=true,eprint=false,doi=true,giveninits=true,uniquename=init]{biblatex} % Allows you to do citations - does Harvard style and compatible with Zotero
+\urlstyle{same} % makes a nicer URL and DOI font
+\AtEveryBibitem{
+    \clearfield{urlyear}
+    \clearfield{urlmonth}
+} % removes access date
+\AtEveryBibitem{\clearfield{month}} % removes months in bibliography
+\AtEveryCitekey{\clearfield{month}} % removes months in citations
+\renewbibmacro{in:}{} % Removes the 'In' before journal names
+
+\renewbibmacro*{editorstrg}{%from biblatex.def
+  \printtext[editortype]{%
+    \iffieldundef{editortype}
+      {\ifboolexpr{
+        test {\ifnumgreater{\value{editor}}{1}}
+        or
+        test {\ifandothers{editor}}
+        }
+        {\bibcpstring{editors}}
+        {\bibcpstring{editor}}}
+    {\ifbibxstring{\thefield{editortype}}
+        {\ifboolexpr{
+            test {\ifnumgreater{\value{editor}}{1}}
+            or
+            test {\ifandothers{editor}}
+            }
+            {\bibcpstring{\thefield{editortype}s}}%changed
+          {\bibcpstring{\thefield{editortype}}}}%changed
+        {\thefield{editortype}}}}}
+
+\renewbibmacro*{byeditor+others}{%from biblatex.def
+  \ifnameundef{editor}
+    {}
+    {\printnames[byeditor]{editor}%
+     \addspace%added
+     \mkbibparens{\usebibmacro{editorstrg}}%added
+     \clearname{editor}%
+     \newunit}%
+  \usebibmacro{byeditorx}%
+  \usebibmacro{bytranslator+others}}
+  % The commands above from lines 20-49 change the way editors are displayed in books
+\AtEveryBibitem{%
+  \clearlist{language}%
+} % removes language from bibliography
+% Removes ibids (ibidems)
+\DeclareNameAlias{sortname}{family-given} % Ensures the names of the authors after the first author are in the correct order in the bibliography
+\renewcommand*{\revsdnamepunct}{} % Corrects punctuation for authors with just a first initial
+%\addbibresource{Example.bib} % Tells LaTeX where the citations are coming from. This is imported from Zotero
+\usepackage[format=plain,
+            font=it]{caption} % Italicizes figure captions
+\usepackage[english]{babel}
+\usepackage{csquotes}
+\renewcommand*{\nameyeardelim}{\addcomma\space} % Adds comma in in-text citations
+\renewcommand{\headrulewidth}{0pt}
+\geometry{letterpaper, portrait, margin=1in}
+\setlength{\headheight}{14.49998pt}
+
+\newcommand\titleofdoc{Homework 2} %%%%% Title
+\newcommand\GroupName{Davide Macario}
+\newcommand\CurrDate{September 19\textsuperscript{th} 2023}
+
+\begin{document}
+\begin{titlepage}
+   \begin{center}
+        \vspace*{4cm} % Adjust spacings to ensure the title page is generally filled with text
+
+        \Huge{\titleofdoc}
+
+        \vspace{0.5cm}
+        \LARGE{ECE 559 – Neural Networks}
+
+        \vspace{3 cm}
+        \Large{\GroupName\\ }
+        \large{Affiliation}
+
+
+        \vspace{2 cm} % Optional additional info here
+
+
+        \vspace{3 cm}
+        \Large{\CurrDate}
+
+        \vspace{0.25 cm}
+        \Large{Fall 2023}
+
+
+        \vfill
+    \end{center}
+\end{titlepage}
+
+\setcounter{page}{2}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\thepage}
+\lhead{\GroupName; \titleofdoc}
+
+\section{Comments on the results}
+
+\end{document}
