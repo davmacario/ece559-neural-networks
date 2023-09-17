@@ -73,7 +73,11 @@ def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set
         plt.title("Number of misclassifications vs. epoch number")
         ax.set_xlabel(r"epoch")
         ax.set_ylabel(r"# misclassifications")
-        plt.show()
+        try:
+            plt.savefig(f"./img/miss_epoch_{x.shape[1]}-{eta}.png")
+        except:
+            plt.savefig(f"./HW2/img/miss_epoch_{x.shape[1]}-{eta}.png")
+        # plt.show()
 
     return w_curr, epoch
 
@@ -88,13 +92,13 @@ def main(n_x, eta, plots=False, verb=False):
     W = np.array([w_0, w_1, w_2])
 
     # Pick 100 (column) vectors 'x'
-    X = np.random.uniform(-1, 1, (2, N_x))
-    X_with_ones = np.vstack((np.ones((1, N_x)), X))
+    X = np.random.uniform(-1, 1, (2, n_x))
+    X_with_ones = np.vstack((np.ones((1, n_x)), X))
 
     # Decide whether each vector is in S1 or S0:
     # d = 1 -> in S1, d = 0 -> in S0
     d = np.array([int(np.dot(X_with_ones[:, i], W) >= 0)
-                  for i in range(N_x)])
+                  for i in range(n_x)])
 
     # Plot decision region for x1 and x2
     if plots:
@@ -114,7 +118,11 @@ def main(n_x, eta, plots=False, verb=False):
         plt.title("Input training points")
         ax.set_xlabel(r"$x_{1}$")
         ax.set_ylabel(r"$x_{2}$")
-        plt.show()
+        try:
+            plt.savefig(f"./img/bound_old_{n_x}-{eta}.png")
+        except:
+            plt.savefig(f"./HW2/img/bound_old_{n_x}-{eta}.png")
+        # plt.show()
 
     # Perceptron Training Algorithm
     w_prime = np.random.uniform(-1, 1, (3,))
@@ -149,27 +157,33 @@ def main(n_x, eta, plots=False, verb=False):
         plt.title("Input training points")
         ax.set_xlabel(r"$x_{1}$")
         ax.set_ylabel(r"$x_{2}$")
-        plt.show()
+        try:
+            plt.savefig(f"./img/bound_new_{n_x}-{eta}.png")
+        except:
+            plt.savefig(f"./HW2/img/bound_new_{n_x}-{eta}.png")
+        # plt.show()
 
     return n_epoch
 
 
 if __name__ == "__main__":
-    # Keeping the seed constant, the random values are the same across multiple
-    # simulations
-    random.seed(660603047)
-    np.random.seed(660603047)
+    N_x = [100, 1000]  # Number of training set elements (range of 'i')
+    eta = [1, 10, 0.1]
 
-    N_x = 100  # Number of training set elements (range of 'i')
-    eta = 1
+    for i in range(len(N_x)):
+        for j in range(len(eta)):
+            print("\n")
+            # Keeping the seed constant, the random values are the same across multiple
+            # simulations
+            random.seed(660603047)
+            np.random.seed(660603047)
+            epochs = main(N_x[i], eta[j], plots=True, verb=True)
 
-    epochs = main(N_x, eta, plots=True, verb=True)
+            n_epochs_multi = []
+            # Perform 50 simulations to observe the average number of epochs
+            for k in range(50):
+                n_epochs_multi.append(main(N_x[i], eta[j]))
 
-    n_epochs_multi = []
-    # Perform 50 simulations to observe the average number of epochs
-    for i in range(50):
-        n_epochs_multi.append(main(N_x, eta))
-
-    avg_epoch = sum(n_epochs_multi) / 50
-    print(
-        f"Average number of epochs for {N_x} training elements and eta = {eta}: {avg_epoch}")
+            avg_epoch = sum(n_epochs_multi) / 50
+            print(
+                f"Average number of epochs for {N_x[i]} training elements and eta = {eta[j]}: {avg_epoch}")
