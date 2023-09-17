@@ -1,10 +1,15 @@
 import random
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
 """
 Perceptron Training Algorithm
 """
+script_folder = os.path.dirname(__file__)
+newpath = os.path.join(script_folder, "img")
+if not os.path.exists(newpath):
+    os.makedirs(newpath)
 
 
 def step_function(x: float):
@@ -73,10 +78,8 @@ def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set
         plt.title("Number of misclassifications vs. epoch number")
         ax.set_xlabel(r"epoch")
         ax.set_ylabel(r"# misclassifications")
-        try:
-            plt.savefig(f"./img/miss_epoch_{x.shape[1]}-{eta}.png")
-        except:
-            plt.savefig(f"./HW2/img/miss_epoch_{x.shape[1]}-{eta}.png")
+        plt.savefig(os.path.join(
+            newpath, f"miss_epoch_{x.shape[1]}-{eta}.png"))
         # plt.show()
 
     return w_curr, epoch
@@ -118,10 +121,7 @@ def main(n_x, eta, plots=False, verb=False):
         plt.title("Input training points")
         ax.set_xlabel(r"$x_{1}$")
         ax.set_ylabel(r"$x_{2}$")
-        try:
-            plt.savefig(f"./img/bound_old_{n_x}-{eta}.png")
-        except:
-            plt.savefig(f"./HW2/img/bound_old_{n_x}-{eta}.png")
+        plt.savefig(os.path.join(newpath, f"bound_old_{n_x}-{eta}.png"))
         # plt.show()
 
     # Perceptron Training Algorithm
@@ -157,10 +157,7 @@ def main(n_x, eta, plots=False, verb=False):
         plt.title("Input training points")
         ax.set_xlabel(r"$x_{1}$")
         ax.set_ylabel(r"$x_{2}$")
-        try:
-            plt.savefig(f"./img/bound_new_{n_x}-{eta}.png")
-        except:
-            plt.savefig(f"./HW2/img/bound_new_{n_x}-{eta}.png")
+        plt.savefig(os.path.join(newpath, f"bound_new_{n_x}-{eta}.png"))
         # plt.show()
 
     return n_epoch
