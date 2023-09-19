@@ -20,17 +20,19 @@ def count_misclassifications(w, x, d):
     """
     count_misclassifications
     ---
-    Count how many data set elements are not correctly classified 
+    Count how many data set elements are not correctly classified
     by the current weights (w).
     """
-    assert len(
-        d) == x.shape[1], f"The dimensions of x and d do not match ({len(d)} vs. {x.dim(1)})"
-    d_prime = np.array([int(np.dot(x[:, i], w) >= 0)
-                       for i in range(x.shape[1])])
+    assert (
+        len(d) == x.shape[1]
+    ), f"The dimensions of x and d do not match ({len(d)} vs. {x.dim(1)})"
+    d_prime = np.array([int(np.dot(x[:, i], w) >= 0) for i in range(x.shape[1])])
     return np.sum(np.absolute(d - d_prime))
 
 
-def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set: dict, plots=False, verb=False):
+def perceptron_training_algorithm(
+    eta: float, w_start_arr: np.ndarray, train_set: dict, plots=False, verb=False
+):
     epoch = 0
     all_class_corr = False
 
@@ -38,15 +40,13 @@ def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set
     class_labels = train_set["d"]
     w_curr = w_start_arr
     n_misclassifications = []
-    n_misclassifications.append(
-        count_misclassifications(w_curr, x, class_labels))
+    n_misclassifications.append(count_misclassifications(w_curr, x, class_labels))
 
     if verb:
         print(f"Initial weights: [{w_curr[0]}, {w_curr[1]}, {w_curr[2]}]")
         print(f"N. misclassifications: {n_misclassifications[0]}")
 
     while not all_class_corr:
-
         n_misclassifications_curr = 0
 
         for i in range(x.shape[1]):
@@ -64,7 +64,7 @@ def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set
             #     f"Weights at epoch {epoch}:\nw_0 = {w_curr[0]}\nw_1 = {w_curr[1]}\nw_2 = {w_curr[2]}")
 
         epoch += 1
-        all_class_corr = (n_misclassifications_curr == 0)
+        all_class_corr = n_misclassifications_curr == 0
         n_misclassifications.append(n_misclassifications_curr)
 
     if verb:
@@ -78,8 +78,7 @@ def perceptron_training_algorithm(eta: float, w_start_arr: np.ndarray, train_set
         plt.title("Number of misclassifications vs. epoch number")
         ax.set_xlabel(r"epoch")
         ax.set_ylabel(r"# misclassifications")
-        plt.savefig(os.path.join(
-            newpath, f"miss_epoch_{x.shape[1]}-{eta}.png"))
+        plt.savefig(os.path.join(newpath, f"miss_epoch_{x.shape[1]}-{eta}.png"))
         # plt.show()
 
     return w_curr, epoch
@@ -100,8 +99,7 @@ def main(n_x, eta, plots=False, verb=False):
 
     # Decide whether each vector is in S1 or S0:
     # d = 1 -> in S1, d = 0 -> in S0
-    d = np.array([int(np.dot(X_with_ones[:, i], W) >= 0)
-                  for i in range(n_x)])
+    d = np.array([int(np.dot(X_with_ones[:, i], W) >= 0) for i in range(n_x)])
 
     # Plot decision region for x1 and x2
     if plots:
@@ -109,11 +107,9 @@ def main(n_x, eta, plots=False, verb=False):
         x2_plt = (-w_0 - w_1 * x1_plt) / w_2
 
         fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
-        ax.plot(x1_plt, x2_plt, 'g', label='Decision boundary')
-        ax.plot(X[0, d == 1], X[1, d == 1],
-                'or', label=r'Points in $S_{0}$')
-        ax.plot(X[0, d == 0], X[1, d == 0],
-                'ob', label=r'Points in $S_{1}$')
+        ax.plot(x1_plt, x2_plt, "g", label="Decision boundary")
+        ax.plot(X[0, d == 1], X[1, d == 1], "or", label=r"Points in $S_{0}$")
+        ax.plot(X[0, d == 0], X[1, d == 0], "sb", label=r"Points in $S_{1}$")
         ax.grid()
         ax.legend()
         ax.set_xlim([-1, 1])
@@ -126,12 +122,10 @@ def main(n_x, eta, plots=False, verb=False):
 
     # Perceptron Training Algorithm
     w_prime = np.random.uniform(-1, 1, (3,))
-    train_set = {
-        "X": X_with_ones,
-        "d": d
-    }
+    train_set = {"X": X_with_ones, "d": d}
     est_w, n_epoch = perceptron_training_algorithm(
-        eta=eta, w_start_arr=w_prime, train_set=train_set, plots=plots, verb=verb)
+        eta=eta, w_start_arr=w_prime, train_set=train_set, plots=plots, verb=verb
+    )
 
     if verb:
         print(f"Actual vs. estimated weights:")
@@ -143,13 +137,16 @@ def main(n_x, eta, plots=False, verb=False):
     if plots:
         x2_prime_plt = (-est_w[0] - est_w[1] * x1_plt) / est_w[2]
         fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
-        ax.plot(x1_plt, x2_plt, 'g', label='Decision boundary')
-        ax.plot(X[0, d == 1], X[1, d == 1],
-                'or', label=r'Points in $S_{0}$')
-        ax.plot(X[0, d == 0], X[1, d == 0],
-                'ob', label=r'Points in $S_{1}$')
-        ax.plot(x1_plt, x2_prime_plt, color='black',
-                linestyle='dashed', label="Estimated boundary")
+        ax.plot(x1_plt, x2_plt, "g", label="Decision boundary")
+        ax.plot(X[0, d == 1], X[1, d == 1], "or", label=r"Points in $S_{0}$")
+        ax.plot(X[0, d == 0], X[1, d == 0], "sb", label=r"Points in $S_{1}$")
+        ax.plot(
+            x1_plt,
+            x2_prime_plt,
+            color="black",
+            linestyle="dashed",
+            label="Estimated boundary",
+        )
         ax.grid()
         ax.legend()
         ax.set_xlim([-1, 1])
@@ -184,4 +181,5 @@ if __name__ == "__main__":
 
             avg_epoch = sum(n_epochs_multi) / 50
             print(
-                f"Average number of epochs for {N_x[i]} training elements and eta = {eta[j]}: {avg_epoch}")
+                f"Average number of epochs for {N_x[i]} training elements and eta = {eta[j]}: {avg_epoch}"
+            )
