@@ -148,8 +148,8 @@ This was achieved by fixing the random initialization seed.
 
 The system was initially analyzed by providing a training set $\mathcal{S}$ containing $n = 100$ elements in ${[-1, 1]}^{2}$.
 For $\eta = 1$, the PLA converged in 9 epochs.
-Figure \ref{fig:01} displays the $100$ training elements on the $x_1, x_2$ plane and the linear boundary.
-Figure \ref{fig:02}, instead shows the behavior of the number of misclassified training elements as a function of the number of training epochs.
+Figure~\ref{fig:01} displays the $100$ training elements on the $x_1, x_2$ plane and the linear boundary.
+Figure~\ref{fig:02}, instead shows the behavior of the number of misclassified training elements as a function of the number of training epochs.
 
 \begin{figure} [ht]
     \begin{minipage}{0.45\linewidth}
@@ -187,16 +187,17 @@ Table \ref{tab:01} contains the comparison between the actual weight values and 
     \label{tab:01}
 \end{table}
 
-It is possible to see that the weights obtained after the learning algorithm are approximately 10 times the actual weights.
-Despite being different from the actual weights, these values can provide a correct classification since the decision boundary can be written as:
+It is possible to see that the weights obtained by the learning algorithm are approximately 10 times the actual weights.
+Despite this difference, these values can provide a correct classification since the decision boundary can be written as:
 
 \begin{equation}
     x_2 = \frac{-w_0 - w_1 x_1}{w_2}
 \end{equation}
 
 Therefore, it is enough for the ratio of the weights to remain the same in order to provide correct classification.
+Indeed: $-\frac{w_0}{w_2} = 0.3457 \approx -\frac{w_{0,\, pta}}{w_{2,\, pta}} = 0.3384$, and $-\frac{w_1}{w_2} = -1.473 \approx -\frac{w_{1,\, pta}}{w_{2,\, pta}} = -1.5056$.
 
-By evaluating the average convergence time in epochs over 50 different runs of the algorithm (changing the weights, the training set elements and the randomly–initialized weights at each iteration) for $n=100$ and $\eta=1$, the algorithm has been observed to converge in 65.2 epochs on average.
+By evaluating the average convergence time in epochs over 50 different runs of the algorithm (changing the weights, the training set elements and the randomly initialized weights at each iteration) for $n=100$ and $\eta=1$, the algorithm has been observed to converge in 65.2 epochs on average.
 This highlights how the actual time of convergence depends on how the weights are initialized at the beginning of PTA and on the training set provided.
 
 \subsection{Case $n=100$, $\eta=10$}
@@ -234,6 +235,7 @@ The final weights obtained for this run are displayed in table \ref{tab:02}.
 \end{table}
 
 Again, despite the final weights being different from the initial ones, they yield approximately the same boundary equation as the actual weights, achieving correct classification.
+In this case, computing the ratios, the results are: $-\frac{w_0}{w_2} = 0.3457 \approx -\frac{w_{0,\, pta}}{w_{2,\, pta}} = 0.2986$, and $-\frac{w_1}{w_2} = -1.473 \approx -\frac{w_{1,\, pta}}{w_{2,\, pta}} = -1.443$.
 
 Evaluating the performance over 50 runs, the average number of epochs has been found to be 40.
 
@@ -252,7 +254,8 @@ With this value of $\eta$, the PTA took 12 epochs to converge, as displayed in f
 
 The final weights are reported in table \ref{tab:03}.
 The values are now of the same order of magnitude, but they are still different.
-In any case, they yield correct classification, since the ratios $\frac{-w_0}{w_2}$ and $\frac{-w_1}{w_2}$ are close to the original ones.
+In any case, they yield correct classification, since the ratios $\frac{-w_0}{w_2}$ and $\frac{-w_1}{w_2}$ are once again close to the original ones.
+Indeed, $-\frac{w_0}{w_2} = 0.3457 \approx -\frac{w_{0,\, pta}}{w_{2,\, pta}} = 0.3707$, and $-\frac{w_1}{w_2} = -1.473 \approx -\frac{w_{1,\, pta}}{w_{2,\, pta}} = -1.522$.
 
 \begin{table}[h]
     \centering
@@ -277,10 +280,11 @@ This is because depending on how distant are the initialized weights at the begi
 
 \subsection{Increasing the training set size}
 
-In general, in supervised learning it is possible to increase the size of the training set to achieve better classification performance.
+In this case, in supervised learning it is possible to increase the size of the training set to achieve better classification performance (this is in general true only until a certain point, where \textit{overfitting} becomes a problem).
 This happens because having more elements to train on, the model is able to learn the patterns that identify the classes in a much more accurate way.
-For this section, the training set size has been increased to $n=1000$, obtaining the elements reported in figure \ref{fig:train-1000}.
-By observing the image, it is evident how in this case there is much little room of error for finding the linear decision boundary that separates the two classes.
+
+For this section, the training set size has been increased to $n=1000$, obtaining the elements reported in figure~\ref{fig:train-1000}.
+By observing the image, it is evident how in this case there is much little room of error for finding the linear decision boundary that separates the two classes, i.e., the estimated boundary obtained with the weights found via PTA needs to be much closer to the original one.
 
 \begin{figure} [h]
     \begin{minipage}{0.45\linewidth}
@@ -298,20 +302,20 @@ By observing the image, it is evident how in this case there is much little room
     \end{minipage}
 \end{figure}
 
-Running the algorithm for $\eta = [1, 10, 0.1]$, the resulting number of misclassifications vs. number of epochs can be seen in figures~\ref{fig:miss-1000-1},~\ref{fig:miss-1000-10} and~\ref{fig:miss-1000-01}, respectively.
+Running the algorithm for $\eta = [1, 10, 0.1]$, the resulting number of misclassifications vs.\ number of epochs can be seen in figures~\ref{fig:miss-1000-1},~\ref{fig:miss-1000-10} and~\ref{fig:miss-1000-01}, respectively.
 For $\eta=1$, the algorithm converged in 338 epochs, for $\eta=10$ in 84 epochs, and for $\eta=0.1$ it took 97 epochs.
-As expected, training requires more iterations in this case, since a lower error is allowed.
+As expected, training requires more iterations in this case, since a lower margin for error is allowed.\\
 
 \begin{figure} [h]
     \begin{minipage}{0.45\linewidth}
-    \centering
+        \centering
         \includegraphics[width=\textwidth]{img/miss_epoch_1000-10.png}
         \caption{Misclassifications vs.\ epoch, $\eta=10$}
         \label{fig:miss-1000-10}
     \end{minipage}
     \hspace{0.5cm}
     \begin{minipage}{0.45\linewidth}
-    \centering
+        \centering
         \includegraphics[width=\textwidth]{img/miss_epoch_1000-0.1.png}
         \caption{Misclassifications vs.\ epoch, $\eta=0.1$}
         \label{fig:miss-1000-01}
@@ -319,7 +323,9 @@ As expected, training requires more iterations in this case, since a lower error
 \end{figure}
 
 Table \ref{tab:eta-1000} reports the original weights and the estimated ones for every value of $\eta$.
-By evaluating the ratios $\frac{-w_0}{w_2}$ and $\frac{-w_1}{w_2}$, it can be seen how they are closer to the original ones compared to the previous case ($n=100$).
+By evaluating the ratios $\frac{-w_0}{w_2}$ and $\frac{-w_1}{w_2}$, it can be seen how they are closer to the original ones compared to the previous case ($n=100$).\\
+By evaluating again the ratios that determine the parameters of the decision boundary, the resulting values are the ones reported in table~\ref{tab:ratios}.
+As already anticipated, the obtained values are closer to the actual ones compared to the case $n=100$.
 
 \begin{table}[h]
     \centering
@@ -339,8 +345,24 @@ By evaluating the ratios $\frac{-w_0}{w_2}$ and $\frac{-w_1}{w_2}$, it can be se
     \label{tab:eta-1000}
 \end{table}
 
+\begin{table}[ht]
+    \centering
+    \begin{tabular}{|c|c|c|c|c|}
+        \hline
+        Ratio & \textbf{Original} & \textbf{PTA}, $\eta=1$ & \textbf{PTA}, $\eta=10$ & \textbf{PTA}, $\eta=0.1$ \\ 
+        \hline
+        \hline
+        $-\frac{w_0}{w_2}$ & 0.3457 & 0.3457 & 0.3435 & 0.3456 \\
+        \hline
+        $-\frac{w_1}{w_2}$ & -1.473 & -1.470 & -1.468 & -1.471 \\
+        \hline
+    \end{tabular}
+    \caption{Ratios corresponding to the decision boundary parameters ($n=1000$)}
+    \label{tab:ratios}
+\end{table}
+
 For each value of the learning coefficient, the training was performed 50 times in order to evaluate the average time of convergence.
 For $\eta=1$ the average number of epochs is 338, for $\eta=10$ it is 84, and for $\eta=97$ it is 97.
-Once again, these values highlight the dependence of convergence time on the random initialization values.
+Once again, these values highlight the dependence of convergence time on the random initialization values and the longer training times compared.
 
 \end{document}
