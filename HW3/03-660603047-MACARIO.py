@@ -65,6 +65,7 @@ def train(
     max_iter=None,
     plots=False,
     imagepath="./img/",
+    verb=False,
 ):
     """
     train
@@ -81,6 +82,9 @@ def train(
     iterations to be performed
     - plots: flag for printing plots (percentage of misclassifications
     over epochs)
+    - imagepath: path of the folder where to store images
+    - verb: flag specifying whether to print miss probability at each
+    iteration
     """
 
     assert eta > 0, "Eta must be a strictly positive value!"
@@ -90,38 +94,43 @@ def train(
     x = train_img.reshape((n, train_img.shape[1] * train_img.shape[2]))
 
     if max_iter is None:
-        max_epoch = 1
+        max_epoch = 2
     else:
         max_epoch = max_iter
     epoch = 0
 
-    misses = (n + 1) * eps  # Initialize to start loop
+    misses = count_misclassifications(W, x, train_labels)
 
     miss_in_time = []
 
-    while misses / n > eps and epoch < max_epoch:
-        # for i in range(n):
-        #     v = np.dot(
-        #         W,
-        #     )
-        misses = count_misclassifications(W, x, train_labels)
+    while misses / n > eps and epoch < max_epoch - 1:
         miss_in_time.append(misses)
-        print(f"Miss probability: {misses/n}")
+        if verb:
+            print(f"Epoch {epoch} - miss probability: {misses/n}")
         epoch += 1
         if max_iter is None:
-            max_epoch += 1
+            max_epoch += 1  # Prevent stopping if no max_iter is set
         for i in range(n):
             x_i = x[i].reshape((x.shape[1], 1))
             W = W + eta * np.dot(
                 train_labels[i].reshape((10, 1)) - step_function(np.dot(W, x_i)),
                 x_i.T,
             )
+        misses = count_misclassifications(W, x, train_labels)
+    epoch += 1
+    miss_in_time.append(misses)  # Add the last value
+    if verb:
+        print(f"Epoch {epoch} - miss probability: {misses/n}")
+    if epoch == max_epoch:
+        print("Early stopping")
 
     if plots:
         fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
         ax.plot(list(range(epoch)), miss_in_time)
         ax.grid()
-        plt.title(f"Number of misclassifications vs. epoch number, n = {n}")
+        plt.title(
+            f"Number of misclassifications vs. epoch number, n = {n}, eps = {eps}"
+        )
         ax.set_xlabel(r"epoch")
         ax.set_ylabel(r"# misclassifications")
         plt.savefig(os.path.join(imagepath, f"miss_epoch_{n}-{eta}.png"))
@@ -165,8 +174,8 @@ if __name__ == "__main__":
 
     train_labels = read_labels(os.path.join(ds_path, "train-labels-idx1-ubyte"))
     test_labels = read_labels(os.path.join(ds_path, "t10k-labels-idx1-ubyte"))
-    print(train_images.shape)
-    print(train_labels.shape)
+    # print(train_images.shape)
+    # print(train_labels.shape)
 
     # Rows are vectors [0, ..., 0, 1, 0, ..., 0]
     train_vec = np.zeros((len(train_labels), 10))
@@ -177,15 +186,106 @@ if __name__ == "__main__":
     test_vec = np.zeros((len(test_labels), 10))
     for i in range(len(test_labels)):
         test_vec[i, test_labels[i]] = 1
-
     ###
-    n = 1000
+    # Flags:
+    do_f = True
+    do_g = True
+    do_h = False
+    do_i = True
 
-    random.seed(660603047)
-    np.random.seed(660603047)
+    ### Cases
+    # (f)
+    if do_f:
+        n = 50
+        eta = 1
+        eps = 0
 
-    W = train(1, 0.01, train_images[:n], train_vec[:n], plots=True, imagepath=imgpath)
+        random.seed(660603047)
+        np.random.seed(660603047)
 
-    print(
-        f"Number of misclassifications on test set: {test(W, test_images, test_vec)} / {len(test_labels)}"
-    )
+        W = train(
+            eta, eps, train_images[:n], train_vec[:n], plots=True, imagepath=imgpath
+        )
+
+        miss_train = test(W, test_images, test_vec)
+        print(
+            f"(n = {n}, eta = {eta}, epsilon = {eps}) Number of misclassifications on test set: {miss_train} / {len(test_labels)}"
+        )
+        print(f"% error: {100 * miss_train / len(test_labels)}")
+        print("")
+    ###
+    # (g)
+    if do_g:
+        n = 1000
+        eta = 1
+        eps = 0
+
+        random.seed(660603047)
+        np.random.seed(660603047)
+
+        W = train(
+            eta, eps, train_images[:n], train_vec[:n], plots=True, imagepath=imgpath
+        )
+
+        miss_train = test(W, test_images, test_vec)
+        print(
+            f"(n = {n}, eta = {eta}, epsilon = {eps}) Number of misclassifications on test set: {miss_train} / {len(test_labels)}"
+        )
+        print(f"% error: {100 * miss_train / len(test_labels)}")
+        print("")
+    ###
+    # (h)
+    if do_h:
+        n = 60000
+        eta = 1
+        eps = 0
+
+        random.seed(660603047)
+        np.random.seed(660603047)
+
+        W = train(
+            eta,
+            eps,
+            train_images[:n],
+            train_vec[:n],
+            max_iter=200,
+            plots=True,
+            imagepath=imgpath,
+            verb=True,
+        )
+
+        miss_train = test(W, test_images, test_vec)
+        print(
+            f"(n = {n}, eta = {eta}, epsilon = {eps}) Number of misclassifications on test set: {miss_train} / {len(test_labels)}"
+        )
+        print(f"% error: {100 * miss_train / len(test_labels)}")
+        print("")
+    ###
+    # (i)
+    if do_i:
+        n = 60000
+        eta = 1
+        eps = 0.13
+
+        random.seed(660603047)
+        np.random.seed(660603047)
+
+        for i in range(3):
+            print(f"> Iter {i + 1} of 3")
+            W = train(
+                eta,
+                eps,
+                train_images[:n],
+                train_vec[:n],
+                max_iter=400,
+                plots=True,
+                imagepath=imgpath,
+                verb=True,
+            )
+
+            miss_train = test(W, test_images, test_vec)
+            print(
+                f"(n = {n}, eta = {eta}, epsilon = {eps}) Number of misclassifications on test set: {miss_train} / {len(test_labels)}"
+            )
+            print(f"% error: {100 * miss_train / len(test_labels)}")
+            print("")
