@@ -1,0 +1,9 @@
+{
+    "grammarly.selectors": [
+        {
+            "language": "latex",
+            "scheme": "file",
+            "pattern": "HW3/hw3-macario.tex"
+        }
+    ]
+}
