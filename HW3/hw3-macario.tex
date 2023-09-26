@@ -125,4 +125,112 @@
 
 \section{Introduction}
 
+This homework consisted of the implementation of a single-layer neural network using the step activation function for the classification of handwritten digits.
+
+The data set was taken from \href{http://yann.lecun.com/exdb/mnist/} and it consisted of a training set of 60000 $28 \prod 28$ grayscale images of individual digits and the associated class used for training the network, plus 10000 equivalent images to be used as test (validation) set.
+
+The training was performed using the Perceptron Training Algorithm (PTA), and multiple runs have been analyzed, changing the following parameters: $n$, the number of considered training samples among 60000 ones, $\eta$, the learning coefficient, and $\epsilon$, the threshold on the ratio between the misclassifications and the number of training elements below which training is interrupted.
+
+To prevent excessive training times, the program allows for fixing a maximum number of training epochs.
+
+In every case, the performance of the training model is evaluated on the test dataset.
+
+To provide an equal comparison between the different cases (different set of parameters), the matrix of weights $\textbf{W} \in \mathbb{R}^{10 \prod 784}$ was initialized to the same random value for each test (this was achieved by re-setting the random seed).
+
+\section{Case $n=50$, $\eta=1$, $\epsilon=0$}
+
+In this first case, only 50 training elements out of the 60000 were considered for training, and the training process was stopped only when the misclassification error on these elements reached zero.
+
+Figure\ \ref{fig:50_1_0} shows the number of misclassifications versus the training epoch number.
+It is also possible to see from the figure how the total number of training epochs is 5.
+Such a small value is associated with the very small training set size in this case.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.6\linewidth]{img/miss_epoch_50-1-0.png}
+  \caption{Number of misclassifications vs.\ epochs, case 1}
+  \label{fig:50_1_0}
+\end{figure}
+
+The small training time, however, has to be traded off with the low classification performance of the network when tested.
+Indeed, when tried on the test set, the obtained set of weights yields wrong classifications in 46.35 \% of cases.
+
+\section{Case $n=1000$, $\eta=1$, $\epsilon=0$}
+
+In this second case, the number of training elements was raised to 1000.
+Again, training was performed on these elements and the resulting weights were tested on the 10000 elements in the test set.\\
+The training was interrupted when the obtained set of weights was able to achieve a 100 \% performance of classification on the training elements, and this was achieved at epoch 22.
+
+Figure\ \ref{fig:1000_1_0} shows the number of misclassifications at each epoch.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.7\linewidth]{img/miss_epoch_1000-1-0.png}
+  \caption{Number of misclassifications vs.\ epochs, case 2}
+  \label{fig:1000_1_0}
+\end{figure}
+
+By observing the result of testing, it can be seen that the performance is better compared to the previous case, with an error of 17.63 \%.
+This however comes at the cost of an increased number of epochs required to complete the training.
+
+\section{Case $n=6000$, $\eta=1$, $\epsilon=0$}
+
+In this case, training was attempted on the full training set (60000 elements), while maintaining $\epsilon=0$.
+Due to the very large number of training elements compared to the previous two cases, and the absence of a margin of error for matrix $\textbf{W}$, the algorithm fails to converge and settles around error values of approximately 13 \% on the test elements.
+This can be seen from figure\ \ref{fig:60000_1_0}. 
+Notice that training was stopped after 200 iterations.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.7\linewidth]{img/miss_epoch_60000-1-0.png}
+  \caption{Number of misclassifications vs.\ epochs, case 3}
+  \label{fig:60000_1_0}
+\end{figure}
+
+This behavior implies that it is impossible to find a set of weights that can achieve a correct classification of all 60000 training elements.
+This can be attributed to the low complexity of the considered neural network, which only has one layer and most likely lacks the complexity needed to capture more specific patterns.
+Indeed, as discussed in previous homework, every single neuron implements a linear decision region in the space of inputs ($\mathbb{R}^{10 \prod 784}$ in this case), and each layer represents a combination of the decision regions of each neuron.
+By adding multiple layers it is possible to make the decision rule of the network more accurate in terms of the ability to detect the individual digits.
+
+Having observed the trend in the error value over the training set, it has been decided to set the threshold for stopping the training procedure at a value $\epsilon = 0.13$.
+
+\section{Case $n=6000$, $\eta=1$, $\epsilon=0.13$}
+
+Now, the training procedure can converge without needing to perform an excessive number of epochs.
+
+The experiment was repeated three times with the same values, ensuring a different initialization of the weight matrix $\textbf{W}$ at each run.
+The resulting plots are reported in figures\ \ref{fig:a},\ \ref{fig:b} and\ \ref{fig:c}.
+
+\begin{figure} [ht]
+  \begin{minipage}{0.45\linewidth}
+  \centering
+    \includegraphics[width=\textwidth]{img/miss_epoch_60000-1-0.13_0.png}
+    \caption{Misclassifications vs.\ number of epochs, case 4.a}
+    \label{fig:a}
+  \end{minipage}
+  \hspace{0.5cm}
+  \begin{minipage}{0.45\linewidth}
+  \centering
+    \includegraphics[width=\textwidth]{img/miss_epoch_60000-1-0.13_1.png}
+    \caption{Misclassifications vs.\ number of epochs, case 4.a}
+    \label{fig:b}
+  \end{minipage}
+\end{figure}
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.5\linewidth]{img/miss_epoch_60000-1-0.13_2.png}
+  \caption{Misclassifications vs.\ number of epochs, case 4.b}
+  \label{label}
+\end{figure}
+
+While the first two runs converged in few epochs (39 and 35, respectively), it took 102 for the third run to converge.
+This is mainly due to the random initialization of the weight matrix, as initial values that perform worse will take longer to adjust to achieve better performance.
+Indeed, by looking at the plots, it is possible to see that the number of misclassifications at epoch 0 (i.e., at initialization) is higher in the third case.
+
+It can also be seen how longer training times do not necessarily mean better performance at the test phase.
+Indeed, after testing the behavior of the three models on the test data set, it turns out that the first two runs can achieve error percentages of 13.54 \% and 13.37 \%, respectively, which are approximately equal to the performance of the third set of weights, achieving an error ratio of 13.56 \%.
+What these values actually tell us is that the use of a larger data set allows for a better ability of the model to generalize, as all three cases yield an error probability very close to the tolerance factor $\epsilon$ used.
+Compared to the previous cases, where the training elements were much fewer, this last model has a more consistent performance between training and test sets.
+
 \end{document}
