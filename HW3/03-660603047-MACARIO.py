@@ -133,7 +133,7 @@ def train(
         )
         ax.set_xlabel(r"epoch")
         ax.set_ylabel(r"# misclassifications")
-        plt.savefig(os.path.join(imagepath, f"miss_epoch_{n}-{eta}.png"))
+        plt.savefig(imagepath)
         plt.show()
 
     return W
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     # Flags:
     do_f = True
     do_g = True
-    do_h = False
+    do_h = True
     do_i = True
 
     ### Cases
@@ -204,7 +204,12 @@ if __name__ == "__main__":
         np.random.seed(660603047)
 
         W = train(
-            eta, eps, train_images[:n], train_vec[:n], plots=True, imagepath=imgpath
+            eta,
+            eps,
+            train_images[:n],
+            train_vec[:n],
+            plots=True,
+            imagepath=os.path.join(imgpath, f"miss_epoch_{n}-{eta}-{eps}.png"),
         )
 
         miss_train = test(W, test_images, test_vec)
@@ -224,7 +229,12 @@ if __name__ == "__main__":
         np.random.seed(660603047)
 
         W = train(
-            eta, eps, train_images[:n], train_vec[:n], plots=True, imagepath=imgpath
+            eta,
+            eps,
+            train_images[:n],
+            train_vec[:n],
+            plots=True,
+            imagepath=os.path.join(imgpath, f"miss_epoch_{n}-{eta}-{eps}.png"),
         )
 
         miss_train = test(W, test_images, test_vec)
@@ -250,7 +260,7 @@ if __name__ == "__main__":
             train_vec[:n],
             max_iter=200,
             plots=True,
-            imagepath=imgpath,
+            imagepath=os.path.join(imgpath, f"miss_epoch_{n}-{eta}-{eps}.png"),
             verb=True,
         )
 
@@ -279,7 +289,7 @@ if __name__ == "__main__":
                 train_vec[:n],
                 max_iter=400,
                 plots=True,
-                imagepath=imgpath,
+                imagepath=os.path.join(imgpath, f"miss_epoch_{n}-{eta}-{eps}_{i}.png"),
                 verb=True,
             )
 
@@ -287,5 +297,5 @@ if __name__ == "__main__":
             print(
                 f"(n = {n}, eta = {eta}, epsilon = {eps}) Number of misclassifications on test set: {miss_train} / {len(test_labels)}"
             )
-            print(f"% error: {100 * miss_train / len(test_labels)}")
+            print(f"% error: {100 * miss_train / len(test_labels)} %")
             print("")
