@@ -226,6 +226,7 @@ def backpropagation(
             mse_min = mse_curr
             w_best = w
 
+    print(f"Epoch: {epoch} - MSE: {mse_curr}")
     epoch += 1
     mse_per_epoch.append(mse_curr)
     if epoch == max_ind:
