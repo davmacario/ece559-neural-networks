@@ -4,6 +4,11 @@
             "language": "latex",
             "scheme": "file",
             "pattern": "HW3/hw3-macario.tex"
+        },
+        {
+            "language": "latex",
+            "scheme": "file",
+            "pattern": "HW4/hw4-macario.tex"
         }
     ]
 }
