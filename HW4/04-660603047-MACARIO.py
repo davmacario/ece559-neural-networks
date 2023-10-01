@@ -9,13 +9,18 @@ def tanh_prime(x):
     """
     Derivative of tanh function
     """
-    return 1 - (np.tanh(x))
+    return 1 - (np.tanh(x)) ** 2
 
 
 def mse(d: np.ndarray, y: np.ndarray) -> float:
     """
-    Mean square error
+    Mean square error evaluation
+
+    ### Input parameters
+    - d: (nx1) vector of training values
+    - y: (nx1) vector of neural network outputs associated with training inputs
     """
+    assert d.shape == y.shape, "The provided vectors don't have the same dimensions!"
     n = d.shape[0]
     return (1 / n) * np.sum((d - y) ** 2)
 
@@ -74,6 +79,8 @@ def grad_mse(
     - v: array of intermediate values (N x 1) associated with input x - dimensions are checked
     - w: current weight vector (3N+1 x 1)
     - N: number of neurons in the central layer
+    - phi: activation function, central layer
+    - phi_prime: derivative of activation function, central layer
 
     ### Output variables
     - grad_mse: (3N+1 x 1) vector containing the gradient of MSE wrt each element of w
@@ -92,16 +99,19 @@ def grad_mse(
     b_prime = w[-1]  # Weight of output
 
     grad_mse = np.zeros((3 * N + 1, 1))
-    # NOTE: derivative of output activation function is 1
+    # NOTE: derivative of output activation function is 1 (linear)
     for i in range(3 * N + 1):
         if i in range(0, N):
-            # Gradient wrt weight of neuron in 1st layer
+            # Gradient wrt biases of neurons in 1st layer
             grad_mse[i] = -1 * (d - y) * phi_prime(v[i]) * w_prime_1j[i]
         elif i in range(N, 2 * N):
+            # Gradient wrt weights of neurons in second layer
             grad_mse[i] = -1 * x * (d - y) * phi_prime(v[i - N]) * w_prime_1j[i - N]
         elif i in range(2 * N, 3 * N):
+            # Gradient wrt weights of output neuron
             grad_mse[i] = -1 * phi(v[i - 2 * N]) * (d - y)
         else:
+            # Gradient wrt bias of output neuron
             assert i == 3 * N
             grad_mse[i] = -1 * (d - y)
 
@@ -136,7 +146,7 @@ def backpropagation(
     """
     assert eta > 0, "Eta must be a strictly positive value!"
     phi = np.tanh  # Activation function of central layer
-    phi_prime = tanh_prime
+    phi_prime = tanh_prime  # Derivative of activation function, central layer
     n = x.shape[0]
 
     if max_epoch is None:
@@ -155,24 +165,33 @@ def backpropagation(
     mse_curr = mse(d, y_curr)
     mse_min = mse_curr
     epoch = 0
-    w_best = np.zeros(w.shape)
+    max_grad_norm = 3
+    incr_epoch = 250
 
-    while mse_curr > 0.029 and epoch < max_ind - 1:
+    while mse_curr >= 0.025 and epoch < max_ind - 1:
         print(f"Epoch: {epoch} - MSE: {mse_curr}")
         mse_per_epoch.append(mse_curr)
 
-        # if (
-        #     epoch >= 1
-        #     and (mse_per_epoch[-2] - mse_per_epoch[-1]) / mse_per_epoch[-1] < 1e-6
-        #     and eta > 5e-4
-        # ):
-        #     eta *= 0.99
-        #     print("> New eta = ", eta)
-
-        if epoch >= 1 and mse_per_epoch[-1] / mse_min > 1.1:
-            eta *= 0.9
-            mse_min = mse_per_epoch[-1]
-            print("> New eta = ", eta)
+        ## Tuning learning rate
+        # Idea: perform first 100 iterations with initial eta, then try to increase it
+        # if the value of mse between the current epoch and 100 epochs before has
+        # decreased by less than 10%
+        if (
+            epoch >= 50 + incr_epoch
+            and np.mean(mse_per_epoch[-50:]) > mse_per_epoch[-1]
+            and mse_per_epoch[-1] >= 0.95 * np.mean(mse_per_epoch[-50:])
+        ):
+            # Choose randomly whether to increase or decrease the learning rate:
+            # alpha = np.random.uniform(0, 1)
+            # if alpha <= 0.9:
+            if eta >= 5e-6:
+                eta *= 0.9
+                incr_epoch = epoch + 1
+                print(f"> Eta decreased ({eta})")
+            # else:
+            #     eta *= 1.1
+            #     incr_epoch = epoch + 1
+            #     print(f"> Eta increased ({eta})")
 
         epoch += 1
         if max_epoch is None:
@@ -193,7 +212,14 @@ def backpropagation(
                 phi,
                 phi_prime,
             )
+            curr_grad_norm = np.linalg.norm(grad_mse_curr)
+            if i == 0:
+                max_grad_norm = curr_grad_norm
+            elif curr_grad_norm > max_grad_norm:
+                max_grad_norm = curr_grad_norm
             w = w - eta * grad_mse_curr
+
+        # print(f"Maximum gradient norm: {max_grad_norm}")
 
         mse_curr = mse(d, y_curr)
         if mse_curr < mse_min:
@@ -208,11 +234,23 @@ def backpropagation(
     fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
     ax.plot(list(range(epoch)), mse_per_epoch)
     ax.grid()
-    plt.title(f"MSE vs. epoch, eta = {eta}")
+    plt.title(f"MSE vs. epoch, eta = {eta}, final MSE = {mse_per_epoch[-1]}")
     ax.set_xlabel(r"epoch")
     ax.set_ylabel(r"MSE")
     if img_folder is not None:
         plt.savefig(os.path.join(img_folder, "mse_per_epoch.png"))
+    if plots:
+        plt.show()
+
+    # Plot derivative of mse per epoch (to find regions of max variation)
+    fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
+    ax.plot(list(range(epoch)), np.gradient(mse_per_epoch))
+    ax.grid()
+    plt.title(r"$\frac{dMSE}{dt}$ vs. epoch")
+    ax.set_xlabel(r"t")
+    ax.set_ylabel(r"$\frac{dMSE}{dt}$")
+    if img_folder is not None:
+        plt.savefig(os.path.join(img_folder, "grad_mse_per_epoch.png"))
     if plots:
         plt.show()
 
@@ -233,7 +271,7 @@ def main(n: int, N: int, img_folder: str, plots: bool = False):
 
     # Draw random training elements:
     x = np.random.uniform(0, 1, (n, 1))
-    nu = np.random.uniform(-0.1, 0.1, (n, 1))
+    nu = np.random.uniform(-0.1, 0.1, (n, 1))  # Random uniform noise
 
     d = np.sin(20 * x) + 3 * x + nu
 
@@ -250,11 +288,11 @@ def main(n: int, N: int, img_folder: str, plots: bool = False):
         plt.show()
 
     # Launch BP algorithm
-    eta = 5e-3  # TODO: tune
+    eta = 5e-2  # TODO: tune
     w = np.random.normal(0, 1, (3 * N + 1, 1))  # Gaussian initialization of weights
 
     w_0 = backpropagation(
-        x, d, eta, N, w, max_epoch=20000, img_folder=img_folder, plots=plots
+        x, d, eta, N, w, max_epoch=10000, img_folder=img_folder, plots=plots
     )
 
     print("BP terminated!")
