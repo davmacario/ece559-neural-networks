@@ -96,7 +96,7 @@
         \Huge{\titleofdoc}
 
         \vspace{0.5cm}
-        \LARGE{Default Subtitle}
+        \LARGE{ECE 559 – Neural Networks}
 
         \vspace{3 cm}
         \Large{\GroupName\\ }
@@ -128,6 +128,20 @@
 This homework activity consisted of the Python implementation of the backpropagation (BP) algorithm for training a neural network composed of two layers, to approximate a function locally.
 The training set was composed of $n=300$ random points having $x$ uniformly-distributed in $[0,\ 1]$, and the function to be approximated was $d_i = f(x_i) = \sin{(20x_i) + 3x_i + \nu_i}$, where $\nu_i$ is random uniform noise in the range $[-0.1,\ 0.1]$, of which $n$ samples have been extracted as well.
 
-The considered neural network is composed of two neuron layers, takes a single input, and returns a single output. The 
+The considered neural network is composed of two neuron layers, takes a single input, and returns a single output. 
+The central layer is composed of $N=24$ neurons using as activation function the $\tanh{v}$ function, while the output layer has a linear activation function ($\phi(v) = v$).
+As a result, the total number of parameters that identify the model, including biases, is $3N+1 = 73$.
+
+\section{Backpropagation algorithm}\label{sec:bp}
+
+The backpropagation algorithm aims at finding the best model parameters to minimize the output Mean Square Error (MSE), which is defined as, for the training set $\mathcal{S}$:
+
+\begin{equation}
+  \mathcal{E} = \frac{1}{|\mathcal{S}|} \sum_{i=0}^{|\mathcal{S}|} {|| d_i - f(x_i, \textbf{w}) ||^2}
+\end{equation}
+where $(x_i, d_i)$ are the training set points in this case, and $f(x_i, \textbf{w})$ corresponds to the neural network output when feeding $x_i$ as input, using weights $\textbf{w}$.
+
+The training procedure exploits the gradient descent algorithm, by correcting the weights by the gradient of $\mathcal{E}$, after evaluating it for each element of the training set.
+This approach, in which the weights are updated once for each 
 
 \end{document}
