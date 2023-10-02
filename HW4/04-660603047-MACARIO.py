@@ -166,32 +166,34 @@ def backpropagation(
     mse_min = mse_curr
     epoch = 0
     max_grad_norm = 3
-    incr_epoch = 250
+    last_eta_update = 130  # Makes the 1st eta update after 200 iterations minimum
 
-    while mse_curr >= 0.025 and epoch < max_ind - 1:
+    while mse_curr >= 0.005 and epoch < max_ind - 1:
         print(f"Epoch: {epoch} - MSE: {mse_curr}")
         mse_per_epoch.append(mse_curr)
 
         ## Tuning learning rate
-        # Idea: perform first 100 iterations with initial eta, then try to increase it
-        # if the value of mse between the current epoch and 100 epochs before has
-        # decreased by less than 10%
-        if (
-            epoch >= 50 + incr_epoch
-            and np.mean(mse_per_epoch[-50:]) > mse_per_epoch[-1]
-            and mse_per_epoch[-1] >= 0.95 * np.mean(mse_per_epoch[-50:])
-        ):
-            # Choose randomly whether to increase or decrease the learning rate:
-            # alpha = np.random.uniform(0, 1)
-            # if alpha <= 0.9:
-            if eta >= 5e-6:
-                eta *= 0.9
-                incr_epoch = epoch + 1
-                print(f"> Eta decreased ({eta})")
-            # else:
-            #     eta *= 1.1
-            #     incr_epoch = epoch + 1
-            #     print(f"> Eta increased ({eta})")
+        # Idea: perform first 200 iterations with initial eta, then try to increase it
+        # if the value of mse between the current epoch and ~70 epochs before has
+        # decreased by less than 3%
+
+        # Update condition (at least every 70 epochs):
+        update_cond = False
+        if epoch >= 70 + last_eta_update:
+            # Update eta if:
+            # 1. The MSE increases after ~70 iterations (take mean to
+            # prevent singular values)
+            c1 = mse_per_epoch[-1] > mse_per_epoch[-2]
+
+            # 2. The MSE does not decrease by at least 3%
+            c2 = mse_per_epoch[-1] > 0.97 * np.mean(mse_per_epoch[-75:-65])
+
+            update_cond = c1 or c2
+
+        if update_cond and eta >= 5e-4:
+            eta *= 0.95
+            last_eta_update = epoch + 1
+            print(f"> Eta decreased ({eta})")
 
         epoch += 1
         if max_epoch is None:
@@ -268,7 +270,8 @@ def main(n: int, N: int, img_folder: str, plots: bool = False):
     - img_folder: path of the folder where to store images
     - plots: flag for displaying plots
     """
-    np.random.seed(660603047)
+    # np.random.seed(660603047)
+    np.random.seed(0)
 
     # Draw random training elements:
     x = np.random.uniform(0, 1, (n, 1))
@@ -289,11 +292,11 @@ def main(n: int, N: int, img_folder: str, plots: bool = False):
         plt.show()
 
     # Launch BP algorithm
-    eta = 5e-2  # TODO: tune
+    eta = 5e-2
     w = np.random.normal(0, 1, (3 * N + 1, 1))  # Gaussian initialization of weights
 
     w_0 = backpropagation(
-        x, d, eta, N, w, max_epoch=10000, img_folder=img_folder, plots=plots
+        x, d, eta, N, w, max_epoch=15000, img_folder=img_folder, plots=plots
     )
 
     print("BP terminated!")
