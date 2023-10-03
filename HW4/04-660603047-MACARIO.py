@@ -309,12 +309,13 @@ def main(n: int, N: int, img_folder: str, plots: bool = False):
         y_plot_est[i] = nn_output(x_plot[i] - mean_x, w_0, N, np.tanh)[0]
 
     fig, ax = plt.subplots(figsize=(8, 6), tight_layout=True)
-    ax.plot(x_plot, y_plot_est, "b")
-    ax.plot(x, d, "or")
+    ax.plot(x_plot, y_plot_est, "b", label="NN output")
+    ax.plot(x, d, "or", label="Training set")
     ax.grid()
+    ax.legend()
     plt.title(f"Result, n={n}")
     ax.set_xlabel(r"$x_i$")
-    ax.set_ylabel(r"$d_i$")
+    ax.set_ylabel(r"$d_i$, $y_i$")
     if img_folder is not None:
         plt.savefig(os.path.join(img_folder, "result.png"))
     if plots:
