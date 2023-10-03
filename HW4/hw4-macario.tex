@@ -27,6 +27,9 @@
 \usepackage{enumitem} % Used to reduce whitespace between list elements
 \setlist[itemize]{noitemsep, topsep=0pt} % Set the whitespace above list to the minimum
 
+\usepackage{algorithm2e}
+\usepackage{algpseudocodex}
+
 \usepackage[style=authoryear-ibid,backend=biber,maxbibnames=99,maxcitenames=2,uniquelist=false,isbn=false,url=true,eprint=false,doi=true,giveninits=true,uniquename=init]{biblatex} % Allows you to do citations - does Harvard style and compatible with Zotero
 \urlstyle{same} % makes a nicer URL and DOI font
 \AtEveryBibitem{
@@ -125,23 +128,76 @@
 
 \section{Introduction}
 
-This homework activity consisted of the Python implementation of the backpropagation (BP) algorithm for training a neural network composed of two layers, to approximate a function locally.
-The training set was composed of $n=300$ random points having $x$ uniformly-distributed in $[0,\ 1]$, and the function to be approximated was $d_i = f(x_i) = \sin{(20x_i) + 3x_i + \nu_i}$, where $\nu_i$ is random uniform noise in the range $[-0.1,\ 0.1]$, of which $n$ samples have been extracted as well.
+This homework activity consists of the Python implementation of the backpropagation (BP) algorithm for training a neural network composed of two layers, to approximate a function locally.
+The training set is composed of $n=300$ random points having $x$ uniformly-distributed in $[0,\ 1]$, and the function to be approximated is $d_i = g(x_i) = \sin{(20x_i) + 3x_i + \nu_i}$, where $\nu_i$ is random uniform noise in the range $[-0.1,\ 0.1]$, of which $n$ samples have been extracted as well.
 
 The considered neural network is composed of two neuron layers, takes a single input, and returns a single output. 
 The central layer is composed of $N=24$ neurons using as activation function the $\tanh{v}$ function, while the output layer has a linear activation function ($\phi(v) = v$).
 As a result, the total number of parameters that identify the model, including biases, is $3N+1 = 73$.
+
+Weights and biases have been gathered in a single (column) vector $\textbf{w}$, which contains:
+\begin{itemize}
+  \item From element $0$ to $N-1$, the biases of the $N$ neurons in the hidden layer;
+  \item From element $N$ to $2N-1$, the weights of each neuron in the hidden layer (linking the input);
+  \item From element $2N$ to $3N-1$, the weights from each neuron in the hidden layer to the output;
+  \item In the last position, i.e., element $3N$, the weight of the output vector;
+\end{itemize}
+This vector has been initialized randomly to independent, identically-distributed gaussian values with mean $0$ and unit variance.
 
 \section{Backpropagation algorithm}\label{sec:bp}
 
 The backpropagation algorithm aims at finding the best model parameters to minimize the output Mean Square Error (MSE), which is defined as, for the training set $\mathcal{S}$:
 
 \begin{equation}
-  \mathcal{E} = \frac{1}{|\mathcal{S}|} \sum_{i=0}^{|\mathcal{S}|} {|| d_i - f(x_i, \textbf{w}) ||^2}
+  \mathcal{E}(\textbf{w}) = \frac{1}{|\mathcal{S}|} \sum_{i=0}^{|\mathcal{S}|} {|| d_i - f(x_i, \textbf{w}) ||^2}
 \end{equation}
 where $(x_i, d_i)$ are the training set points in this case, and $f(x_i, \textbf{w})$ corresponds to the neural network output when feeding $x_i$ as input, using weights $\textbf{w}$.
 
 The training procedure exploits the gradient descent algorithm, by correcting the weights by the gradient of $\mathcal{E}$, after evaluating it for each element of the training set.
-This approach, in which the weights are updated once for each 
+This approach, in which the weights are updated once for each training element at each epoch, is called ``\textit{online learning}''.
+In particular, for each element $x_i$ in the training set, the weights, stored in vector $w$, are updated as:
+\begin{equation}
+  \textbf{w} \leftarrow \textbf{w} - \eta \nabla_{w}\mathcal{E}_i = \textbf{w} - \eta \nabla_{w}||d_i - f(x_i, \textbf{w})||^2
+\end{equation}
+Here, the gradient of the MSE factor is evaluated with respect to the weight vector, considering as input of the network $x_i$.
+
+To achieve better training performances, it is needed to correctly tune the parameter $\eta$, also called the ``learning rate'', as it determines the amount of change of vector $\textbf{w}$ along the direction of the gradient at each iteration.
+In other words, depending on its value, $\eta$ determines how quickly we move towards the minimum of the objective function ($\mathcal{E}$) at every update of the weights.
+
+First, it is necessary to start the iterations with a value of the learning rate that is not excessively big to prevent divergence of the algorithm, i.e., getting far from the optimal point due to overshoot.
+Secondly, because when getting closer to the optimum of the function it may be possible to incur the same overshooting issue, what is usually done is to decrease the value of $\eta$ once the objective function does not improve much, or even gets worse (i.e., increases), after a certain number of epochs.\\
+In this case, it has been chosen to act on the learning coefficient as follows: the starting value has been set to $0.05$, which has been observed to not make the algorithm diverge; then, after at least $200$ initial epochs, the parameter can be updated as:
+\begin{equation}
+  \eta \leftarrow 0.95\cdot\eta
+\end{equation}
+This update is performed if the current value of $\eta$ is bigger than $5\cdot 10^{-4}$, which has been observed to be a good lower bound for the parameter, as using a smaller one would result in a much slower convergence in the long run, and at least one of these two conditions holds:
+\begin{itemize}
+  \item Either the last MSE value is higher than the average of the $5$ previous ones
+  \item Or the current MSE value not at least $3\%$ lower than the average of the MSE values between $75$ and $65$ epochs before
+\end{itemize}
+The first condition aims at preventing the MSE from increasing, while the second one ensures that there is always improvement in the learning procedure, and both consider averages to prevent single outliers from affecting the training.\\
+After the first update, which can be performed after $200$ epochs, the following ones have to be at least $70$ epochs apart.
+This value have been chosen to allow the changes in $\eta$ to have time to reflect themselves on the MSE values, and are all results of testing the algorithm and looking at the values.
+
+Another decision that has to be made concerns the stopping criterion of the training procedure.
+In this case, the stopping conditions are: reaching a maximum number of $15000$ epochs or reaching an MSE value lower than $0.005$.
+While the first condition has been chosen to simply prevent the program from running indefinitely, the second one aims at obtaining a good enough approximation of the function.
+
+\subsection{Algorithm}
+
+This section contains the complete Backpropagation algorithm used for this homework.
+The algorithm receives the randomly-initialized vector of weights
+
+\begin{algorithm}
+  \caption{Backpropagation algorithm}
+  \label{alg:bp}
+  \begin{algorithmic}[1]
+    \State Initialize vector of MSE values per epoch;
+    \State Set \verb|epoch| = 0
+    \State Set \verb|last_eta_update| = 130
+    \State Set $\eta$ = 0.05
+  \end{algorithmic}
+\end{algorithm}
+
 
 \end{document}

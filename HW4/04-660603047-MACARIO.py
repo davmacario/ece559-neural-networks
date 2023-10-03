@@ -183,10 +183,10 @@ def backpropagation(
             # Update eta if:
             # 1. The MSE increases after ~70 iterations (take mean to
             # prevent singular values)
-            c1 = mse_per_epoch[-1] > mse_per_epoch[-2]
+            c1 = mse_per_epoch[-1] > np.mean(mse_per_epoch[-6:-2])
 
             # 2. The MSE does not decrease by at least 3%
-            c2 = mse_per_epoch[-1] > 0.97 * np.mean(mse_per_epoch[-75:-65])
+            c2 = mse_per_epoch[-1] > 0.97 * np.mean(mse_per_epoch[-75:-66])
 
             update_cond = c1 or c2
 
