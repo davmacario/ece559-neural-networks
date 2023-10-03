@@ -133,9 +133,12 @@ def backpropagation(
     ---
     Backpropagation algorithm on 1 x N x 1 neural network, with
     training set elements (x_i, d_i), starting with weights w.
+    This function performs centering of the training inputs (i.e.,
+    it removes the mean value before training), and returns the
+    mean among the outputs.
 
     ### Input parameters
-    - x: training set inputs
+    - x_init: training set inputs, non-centered
     - d: training set outputs
     - eta: learning coefficient
     - N: number of perceptron in central layer (number of weights is 3N + 1)
@@ -143,6 +146,10 @@ def backpropagation(
     - max_epoch: maximum number of training epochs (if None, no maximum)
     - img_folder: folder where to store images
     - plots: flag indicating whether to display plots
+
+    ### Output parameters
+    - w: nDarray containing the trained model parameters
+    - mu_x: mean value of the provided x_init (will be needed at test)
     """
     assert eta > 0, "Eta must be a strictly positive value!"
     phi = np.tanh  # Activation function of central layer
@@ -167,9 +174,7 @@ def backpropagation(
         v_curr[i, :] = v.T
 
     mse_curr = mse(d, y_curr)
-    mse_min = mse_curr
     epoch = 0
-    # max_grad_norm = 3
     last_eta_update = 130  # Makes the 1st eta update after 200 iterations minimum
 
     while mse_curr >= 0.005 and epoch < max_ind - 1:
@@ -180,12 +185,11 @@ def backpropagation(
         # Idea: perform first 200 iterations with initial eta, then try to increase it
         # if the value of mse between the current epoch and ~70 epochs before has
         # decreased by less than 3%
-
-        # Update condition (at least every 70 epochs):
+        # Update condition (at least every 70 epochs from last):
         update_cond = False
         if epoch >= 70 + last_eta_update:
             # Update eta if:
-            # 1. The MSE increases after ~70 iterations (take mean to
+            # 1. The MSE increases in the last iterations (take mean to
             # prevent singular values)
             c1 = mse_per_epoch[-1] > np.mean(mse_per_epoch[-6:-2])
 
@@ -200,7 +204,7 @@ def backpropagation(
             print(f"> Eta decreased ({eta})")
 
         epoch += 1
-        if max_epoch is None:
+        if max_epoch is None:  # Case no max. epochs
             max_ind += 1
 
         # Update weights - BP
@@ -218,19 +222,9 @@ def backpropagation(
                 phi,
                 phi_prime,
             )
-            # curr_grad_norm = np.linalg.norm(grad_mse_curr)
-            # if i == 0:
-            #     max_grad_norm = curr_grad_norm
-            # elif curr_grad_norm > max_grad_norm:
-            #     max_grad_norm = curr_grad_norm
             w = w - eta * grad_mse_curr
 
-        # print(f"Maximum gradient norm: {max_grad_norm}")
-
         mse_curr = mse(d, y_curr)
-        if mse_curr < mse_min:
-            mse_min = mse_curr
-            w_best = w
 
     print(f"Epoch: {epoch} - MSE: {mse_curr}")
     epoch += 1
@@ -274,8 +268,8 @@ def main(n: int, N: int, img_folder: str, plots: bool = False):
     - img_folder: path of the folder where to store images
     - plots: flag for displaying plots
     """
-    # np.random.seed(660603047)
-    np.random.seed(0)
+    np.random.seed(660603047)
+    # np.random.seed(0)
 
     # Draw random training elements:
     x = np.random.uniform(0, 1, (n, 1))
