@@ -27,7 +27,7 @@
 \usepackage{enumitem} % Used to reduce whitespace between list elements
 \setlist[itemize]{noitemsep, topsep=0pt} % Set the whitespace above list to the minimum
 
-\usepackage{algorithm2e}
+\usepackage{algorithm}
 \usepackage{algpseudocodex}
 
 \usepackage[style=authoryear-ibid,backend=biber,maxbibnames=99,maxcitenames=2,uniquelist=false,isbn=false,url=true,eprint=false,doi=true,giveninits=true,uniquename=init]{biblatex} % Allows you to do citations - does Harvard style and compatible with Zotero
@@ -129,7 +129,14 @@
 \section{Introduction}
 
 This homework activity consists of the Python implementation of the backpropagation (BP) algorithm for training a neural network composed of two layers, to approximate a function locally.
-The training set is composed of $n=300$ random points having $x$ uniformly-distributed in $[0,\ 1]$, and the function to be approximated is $d_i = g(x_i) = \sin{(20x_i) + 3x_i + \nu_i}$, where $\nu_i$ is random uniform noise in the range $[-0.1,\ 0.1]$, of which $n$ samples have been extracted as well.
+The training set is composed of $n=300$ random points having $x_i$ uniformly-distributed in $[0,\ 1]$, and the function to be approximated is $d_i = g(x_i) = \sin{(20x_i) + 3x_i + \nu_i}$, where $\nu_i$ is random uniform noise in the range $[-0.1,\ 0.1]$, of which $n$ samples have been extracted as well.
+Figure\ \ref{fig:train} displays the training set $\mathcal{S} = \left\{(x_i, d_i): d_i = g(x_i)\right\}$.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.6\linewidth]{img/training_points.png}
+  \caption{Training set elements}\label{fig:train}
+\end{figure}
 
 The considered neural network is composed of two neuron layers, takes a single input, and returns a single output. 
 The central layer is composed of $N=24$ neurons using as activation function the $\tanh{v}$ function, while the output layer has a linear activation function ($\phi(v) = v$).
@@ -156,10 +163,12 @@ where $(x_i, d_i)$ are the training set points in this case, and $f(x_i, \textbf
 The training procedure exploits the gradient descent algorithm, by correcting the weights by the gradient of $\mathcal{E}$, after evaluating it for each element of the training set.
 This approach, in which the weights are updated once for each training element at each epoch, is called ``\textit{online learning}''.
 In particular, for each element $x_i$ in the training set, the weights, stored in vector $w$, are updated as:
-\begin{equation}
+\begin{equation}\label{eq:update}
   \textbf{w} \leftarrow \textbf{w} - \eta \nabla_{w}\mathcal{E}_i = \textbf{w} - \eta \nabla_{w}||d_i - f(x_i, \textbf{w})||^2
 \end{equation}
 Here, the gradient of the MSE factor is evaluated with respect to the weight vector, considering as input of the network $x_i$.
+In this case, since the randomly generated training elements are in the range $[0,1]$, hence no negative $x$ is extracted, it is convenient to center them, i.e., to make sure their mean value is $0$.
+This helps in improving the convergence speed, as explained during lectures, and it has been observed to bring substantial improvements in prac
 
 To achieve better training performances, it is needed to correctly tune the parameter $\eta$, also called the ``learning rate'', as it determines the amount of change of vector $\textbf{w}$ along the direction of the gradient at each iteration.
 In other words, depending on its value, $\eta$ determines how quickly we move towards the minimum of the objective function ($\mathcal{E}$) at every update of the weights.
@@ -185,20 +194,87 @@ While the first condition has been chosen to simply prevent the program from run
 
 \subsection{Algorithm}
 
-This section contains the complete Backpropagation algorithm used for this homework.
+At\ [\ref{alg:bp}] it is possible to see the complete backpropagation algorithm used for this homework.
 The algorithm receives the randomly-initialized vector of weights.
 
-\begin{algorithm}
-  \caption{Backpropagation algorithm}
-  \label{alg:bp}
-  \begin{algorithmic}[1]
-    \State Initialize vector of MSE values per epoch;
-    \State Set \verb|epoch| = 0
-    \State Set \verb|last_eta_update| = 130
-    \State Set $\eta$ = 0.05
+The following are the symbols that are used in the algorithm:
+\begin{itemize}
+  \item $x_i'$ is the centered version of training element $x_i$
+  \item $\mathcal{E}_i = ||d_i - f(x_i, \textbf{w})||^2$, as in\ [\ref{eq:update}].
+  \item $w_{j,1},\ j=1,\ldots, N$ are the weights from the input to each neuron in the first layer
+  \item $w_{j,0},\ j=1,\ldots, N$ are the biases of each neuron in the first layer
+  \item $w_{1, j}',\ j=1,\ldots, N$ are the weights from each neuron in the hidden layer to the output
+  \item $w_{1,0}'$ is the bias of the output neuron
+  \item $\phi(v) = \tanh{(v)}$ is the activation function of all neurons in the hidden layer, and $\phi'(v) = 1-{(\tanh{(v)})}^2$ is its derivative
+  \item $\phi_1(v) = v$ is the output activation function, and its derivative is $\phi_1'(v)=1$
+  \item $v_{j, i}$ is the local field of neuron $j$ in the hidden layer, having provided input $x_i'$
+  \item $v'_{1, i}$ is the local field of the output neuron, having provided input $x_i'$
+  \item $y_i = f(x_i', \textbf{w})$ is the output of the neural network for input $x_i'$
+\end{itemize}
 
+\begin{algorithm}
+  \caption{Backpropagation algorithm}\label{alg:bp}
+  \begin{algorithmic}[1]
+    \State Initialize $\textbf{w}$ randomly with $(3N+1) \times 1$ gaussian values with zero mean and unit variance
+    \State Set $\text{epoch} = 0$, $\text{last\_eta\_update} = 130$
+    \State Set $\eta = 0.05$
+    \State Evaluate the mean value of training elements: $\mu_{x,\mathcal{S}} = \frac{1}{|\mathcal{S}|}\sum_{i=1}^{|\mathcal{S}|}x_i$
+    \State Center the training elements: $\mathcal{S}' = \left\{x_i' :\ x_i' = x_i - \mu_{x, \mathcal{S}}\right\}$
+    \State Evaluate the outputs for each (centered) training element using the random weights: $y_i = f(x_i', \textbf{w})$
+    \State Compute the initial MSE with the current $y_i$ values and store it %(\verb|mse_curr|)
+    % \State Initialize empty MSE array
+    \While {MSE $\geq$ 0.005 and epoch $<$ ($\text{max\_epoch} - 1$)}:
+      % \State Append the current MSE value to the MSE array
+      \If {epoch $\geq \text{last\_eta\_update} + 70$}
+        \State Evaluate condition 1: \verb|True| if the last MSE value is bigger than the average of the MSE from $6$ to $2$ iterations before
+        \State Evaluate condition 2: \verb|True| if the last MSE value is bigger than $97 \%$ of the mean of MSE values between $75$ to $66$ iterations before.
+        \If {Condition 1 or Condition 2 holds, and $\eta \geq 5\cdot 10^{-4}$}:
+          \State $\eta = 0.95\cdot \eta$
+          \State $\text{last\_eta\_update} = \text{epoch}$
+        \EndIf
+      \EndIf
+      \State $\text{epoch}++$
+      \For {$i = 1, \ldots, n$}:
+        \State Evaluate the output $y_i$ of the neural network and the local fields $v_{j,i}$ given input $x_i'$ and the current parameters $\textbf{w}$.
+        \State Evaluate the gradient of the MSE factor with respect to the elements of $\textbf{w}$ and gather the factors in vector $\nabla_{\textbf{w}} \mathcal{E}_i$:
+        \begin{align*}
+          \frac{\partial \mathcal{E}_i}{\partial w_{j,1}} &= - x_i\cdot (d_i - y_i)\cdot \phi_1'(v_{1,i}')\cdot w_{1,j}'\cdot \phi'(v_{j,i}) \\
+          \frac{\partial \mathcal{E}_i}{\partial w_{j,0}} &= - 1\cdot (d_i - y_i)\cdot \phi_1'(v_{1,i}')\cdot w_{1,j}'\cdot \phi'(v_{j,i})\\
+          \frac{\partial \mathcal{E}_i}{\partial w_{1, j}'} &= - (\phi(v_{j,i})) \cdot (d_i - y_i)\cdot \phi_1'(v_{1,i}') \\
+          \frac{\partial \mathcal{E}_i}{\partial w_{1, 0}'} &= - 1 \cdot (d_i - y_i)\cdot \phi_1'(v_{1,i}') \\
+        \end{align*}
+        \State $\textbf{w} \leftarrow \textbf{w} - \eta \nabla_{\textbf{w}} \mathcal{E}_i$
+      \EndFor
+      \State Evaluate MSE over all $y_i$ evaluated in the previous \verb|for| loop
+    \EndWhile
+    \State $\text{epoch}++$
+    \State Return $\textbf{w}$, $\mu_{x,\mathcal{S}}$
   \end{algorithmic}
 \end{algorithm}
+
+Figure\ \ref{fig:mse_epoch} reports the MSE values over the training epochs obtained running the algorithm having set the random initialization seed to $660603047$.
+It is possible to see that, despite the MSE being non-increasing, the descent rate changes noticeably during the iterations.
+This is a result of both the randomness in the initialization of $\textbf{w}$ and the variation of $\eta$.\\
+Another common feature of different runs (with different random seeds) is the stabilization of the descent rate when reaching low MSE values (approximately $0.01$).
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.7\linewidth]{img/mse_per_epoch.png}
+  \caption{MSE vs.\ training epoch}\label{fig:mse_epoch}
+\end{figure}
+
+\section{Testing the trained model}\label{sec:test}
+
+Having obtained the values of weights and biases of the neural network from training, it is possible to study the generalization capabilities of the model by feeding it values of $x_i$ in the range $[0,1]$ and comparing the curve obtained as the output of the network with the training points.
+Figure\ \ref{fig:test} shows this comparison, with the blue line representing the output associated with $1000$ uniformly-spaced points in the range, and the red dots being the training elements.
+As expected, having found the model parameters $\textbf{w}$ ensuring less than $0.005$ in the mean square error on the training elements results in a good fit of the test data.
+Notice that, when feeding the test values $x_{i, te}$ to the network it is necessary to subtract the mean $\mu_{x,\mathcal{S}}$ evaluated on the training set.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.7\linewidth]{img/result.png}
+  \caption{Comparison between NN output and training data}\label{fig:test}
+\end{figure}
 
 
 \end{document}
