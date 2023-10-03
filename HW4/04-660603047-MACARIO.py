@@ -160,6 +160,9 @@ def backpropagation(
     mu_x = np.mean(x_init)  # Mean value of x
     x = x_init - mu_x  # Center training elements
 
+    if w is None:
+        w = np.random.uniform(-1, 1, (3 * N + 1, 1))
+
     if max_epoch is None:
         max_ind = 2
     else:
