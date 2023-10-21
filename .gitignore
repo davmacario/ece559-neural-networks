@@ -502,3 +502,5 @@ hw5-macario.pdf
 
 # Dataset folders:
 output/
+train/
+test/
