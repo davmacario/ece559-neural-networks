@@ -10,11 +10,11 @@ import random
 import shutil
 
 
-def importDataset(
+def splitDataset(
     n_train: int, ds_path: str = os.path.join(os.path.dirname(__file__), "output")
 ):
     """
-    importDataset
+    splitDataset
     ---
     Given the path of the dataset, sort the images into two folders 'train/'
     and 'test/' containing the same number of elements per class.
@@ -72,6 +72,13 @@ def importDataset(
             shutil.copy(os.path.join(ds_path, fname), os.path.join(te_path, fname))
 
     return list(class_labels.keys()), tr_path, te_path
+
+
+def importDataset(train_path: str, test_path: str, classes: list):
+    """
+    importDataset
+    ---
+    """
 
 
 if __name__ == "__main__":

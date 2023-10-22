@@ -1,2 +1,7 @@
 numpy
 matplotlib
+scikit-learn
+seaborn
+torch
+torchaudio
+torchvision
