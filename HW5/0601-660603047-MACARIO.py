@@ -92,8 +92,8 @@ def splitDataset(
 
 
 def importDataset(
-    train_path: str, classes: list = None, batch_size: int = 16, shuffle: bool = True
-) -> torch.utils.data.DataLoader:
+    train_path: str, batch_size: int = 16, shuffle: bool = True
+) -> (torch.utils.data.DataLoader, dict):
     """
     importTraining
     ---
@@ -101,13 +101,13 @@ def importDataset(
 
     ### Input parameters
     - train_path: path of the trainin set folder
-    - classes: list of classes - if not given, they will be inferred
     - batch_size: batch size in data loader
     - shuffle: flag to select whether to shuffle the training elements
     or not in data loader
 
     ### Output parameters
     - train_data_loader: `torch.utils.data.DataLoader` object containing the training set
+    - label_class_mapping: mapping between labels (integer numbers) and classes (dict)
     """
     if not os.path.exists(train_path):
         raise FileNotFoundError(f"The specified path ({train_path}) is invalid!")
@@ -125,12 +125,53 @@ def importDataset(
         train_images, batch_size=batch_size, shuffle=shuffle
     )
 
-    return train_data_loader
+    label_class_mapping = train_images.class_to_idx
+
+    return train_data_loader, label_class_mapping
+
+
+def dispImages(
+    images: torch.tensor,
+    labels: torch.tensor,
+    classes_map: dict,
+    img_path: str = None,
+    plot_shape: tuple = (2, 3),
+):
+    """
+    dispImages
+    ---
+    Display a subset of the dataset images.
+
+    ### Input parameters
+    - images: tensor of images
+    - labels: tensor of labels associated with the images
+    - classes_map: dictionary containing the mapping between labels
+    and classes
+    - img_path: path of the output image; if None, the image is not
+    saved
+    - plot_shape: optional tuple indicating the 'shape' of the plot
+    in terms of subplots
+    """
+    assert isinstance(plot_shape[0], int) and isinstance(
+        plot_shape[1], int
+    ), "The elements of 'plot_shape' should be integers!"
+    plt.figure(figsize=(10, 5))
+    for i in range(plot_shape[0] * plot_shape[1]):
+        plt.subplot(plot_shape[0], plot_shape[1], i + 1)
+        plt.imshow(
+            np.transpose(images[i], (1, 2, 0)) / 2 + 0.5
+        )  # Unnormalize and display the image
+        plt.title(list(classes_map.keys())[labels[i]])
+        plt.axis("off")
+        if img_path is not None:
+            plt.savefig(img_path)
+    plt.show()
 
 
 if __name__ == "__main__":
     dataset_path = os.path.join(os.path.dirname(__file__), "output")
     train_path = os.path.join(os.path.dirname(__file__), "train")
+    images_folder = os.path.join(os.path.dirname(__file__), "img")
     n_training = 8000
 
     try:
@@ -139,4 +180,16 @@ if __name__ == "__main__":
     except FileExistsError:
         print("Training and test set already split!")
 
-    dl_train = importDataset(train_path)
+    dl_train, classes_map = importDataset(train_path)
+
+    tr_img, tr_labels = next(iter(dl_train))
+
+    # print(tr_img)
+    # print(tr_labels)
+
+    dispImages(
+        tr_img,
+        tr_labels,
+        classes_map,
+        img_path=os.path.join(images_folder, "train_samples.png"),
+    )
