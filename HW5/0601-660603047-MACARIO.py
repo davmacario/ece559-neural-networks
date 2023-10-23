@@ -8,6 +8,7 @@ import os
 import sys
 import random
 import shutil
+from typing import Callable
 
 
 class MyNet(nn.Module):
@@ -30,29 +31,45 @@ class MyNet(nn.Module):
         """
         super(MyNet, self).__init__()
 
-        assert (
-            len(input_shape) == 2 or len(input_shape) == 3
-        ), "The input shape needs to have dimension 2 or 3"
         self.input_size = input_shape
         # Define layers
         self.pool_halve = nn.MaxPool2d(2, 2)
-        if len(input_shape) == 2:
-            self.conv1 = nn.Conv2d(3, 20, 5)
-        elif len(input_shape) == 3:
-            self.conv1 = nn.Conv2d(3, 20, 5)
+        self.conv1 = nn.Conv2d(3, 20, 5)
         self.conv2 = nn.Conv2d(20, 50, 3)
 
-        self.fc1 = nn.Linear(50 * input_shape[0] * input_shape[1], 200)
+        self.len_1st_fc = int(50 * input_shape[0] / 8 * input_shape[1] / 8)
+        self.fc1 = nn.Linear(self.len_1st_fc, 200)
         self.fc2 = nn.Linear(200, 80)
-        self.out = nn.Line(80, n_classes)
+        self.fc3 = nn.Linear(80, n_classes)
 
-    def forward(self, x):
+    def forward(
+        self, x, act_func: Callable = nn.functional.relu, softmax_out: bool = True
+    ):
         """
         forward
         ---
         Forward propagation in the neural network
+
+        ## Input parameters
+        - x: input of the network
+        - act_func: activation function to be used in the intermediate layers
+        - softmax_out: flag to indicate whether to apply softmax function at the
+        output of the network
+
+        ### Output parameters
+        - y: output of the network [array]
         """
-        pass
+        y = self.pool_halve(x)
+        y = self.pool_halve(act_func(self.conv1(y)))
+        y = self.pool_halve(act_func(self.conv2(y)))
+        y = y.view(-1, self.len_1st_fc)
+        y = act_func(self.fc1(y))
+        y = act_func(self.fc2(y))
+        if softmax_out:
+            y = nn.functional.softmax(self.fc3(y))
+        else:
+            y = self.fc3(y)
+        return y
 
 
 def splitDataset(
@@ -162,7 +179,13 @@ def importDataset(
     for fname in img_names:
         train_labels.append(str(fname.split("_")[0]))
 
-    transf = transforms.Compose([transforms.Resize((200, 200)), transforms.ToTensor()])
+    transf = transforms.Compose(
+        [
+            transforms.Resize((200, 200)),
+            transforms.ToTensor(),
+            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+        ]
+    )
     # TODO: maybe add transform.Normalize()
 
     train_images = datasets.ImageFolder(train_path, transf)
@@ -235,3 +258,7 @@ if __name__ == "__main__":
         classes_map,
         img_path=os.path.join(images_folder, "train_samples.png"),
     )
+
+    print(tr_img.shape[2:4])
+
+    my_nn = MyNet(tr_img.shape[2:4], len(classes_map.keys()))
