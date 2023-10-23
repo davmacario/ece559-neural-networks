@@ -10,6 +10,51 @@ import random
 import shutil
 
 
+class MyNet(nn.Module):
+    """
+    MyNet
+    ---
+    Neural network used for shape classification.
+    """
+
+    def __init__(self, input_shape: (int, int), n_classes: int):
+        """
+        Initialize the neural network.
+
+        ### Input parameters
+        - input_shape:
+        - n_classes:
+
+        ### Network structure (layers)
+        -
+        """
+        super(MyNet, self).__init__()
+
+        assert (
+            len(input_shape) == 2 or len(input_shape) == 3
+        ), "The input shape needs to have dimension 2 or 3"
+        self.input_size = input_shape
+        # Define layers
+        self.pool_halve = nn.MaxPool2d(2, 2)
+        if len(input_shape) == 2:
+            self.conv1 = nn.Conv2d(3, 20, 5)
+        elif len(input_shape) == 3:
+            self.conv1 = nn.Conv2d(3, 20, 5)
+        self.conv2 = nn.Conv2d(20, 50, 3)
+
+        self.fc1 = nn.Linear(50 * input_shape[0] * input_shape[1], 200)
+        self.fc2 = nn.Linear(200, 80)
+        self.out = nn.Line(80, n_classes)
+
+    def forward(self, x):
+        """
+        forward
+        ---
+        Forward propagation in the neural network
+        """
+        pass
+
+
 def splitDataset(
     n_train: int,
     ds_path: str = os.path.join(os.path.dirname(__file__), "output"),
@@ -183,9 +228,6 @@ if __name__ == "__main__":
     dl_train, classes_map = importDataset(train_path)
 
     tr_img, tr_labels = next(iter(dl_train))
-
-    # print(tr_img)
-    # print(tr_labels)
 
     dispImages(
         tr_img,
