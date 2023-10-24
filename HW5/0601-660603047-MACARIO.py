@@ -39,9 +39,11 @@ class MyNet(nn.Module):
 
         self.input_size = input_shape
         self.n_classes = n_classes
-        # Define layers
+
+        # Layer Definition
         self.pool_halve = nn.MaxPool2d(2, 2)
         self.pool_4 = nn.MaxPool2d(4, 4)
+
         self.conv1 = nn.Conv2d(3, 20, 5)
         self.conv2 = nn.Conv2d(20, 50, 3)
 
@@ -50,15 +52,29 @@ class MyNet(nn.Module):
         self.fc2 = nn.Linear(150, 80)
         self.fc3 = nn.Linear(80, n_classes)
 
+        # Variables for displaying performance
+        self.n_epochs = None
+        self.loss_train = None
+        self.loss_test = None
+        self.acc_train = None
+        self.acc_test = None
+
     def forward(
         self, x, act_func: Callable = nn.functional.relu, softmax_out: bool = False
     ):
         """
         forward
         ---
-        Forward propagation in the neural network
+        Forward propagation in the neural network.
 
-        ## Input parameters
+        ## Network structure
+
+        1. MaxPooling layer - downsampling images by 4
+        2. TODO
+
+        ---
+
+        ### Input parameters
         - x: input of the network
         - act_func: activation function to be used in the intermediate layers
         - softmax_out: flag to indicate whether to apply softmax function at the
@@ -104,6 +120,14 @@ class MyNet(nn.Module):
         - model_path: path of the output model
         - mps_device: if passed, specify the presence of MPS (Apple silicon GPU)
         """
+        self.n_epochs = n_epochs
+        self.loss_train = np.zeros((n_epochs, ))
+        self.acc_train = np.zeros((n_epochs, ))
+
+        if test_dataloader is not None:
+            self.loss_test = np.zeros((n_epochs, ))
+            self.acc_test = np.zeros((n_epochs, ))
+
         for epoch in range(n_epochs):  # Change the number of epochs as needed
             running_loss = 0.0
             # print(loadingBar(epoch, n_epochs, 20), end="\r")
@@ -113,17 +137,25 @@ class MyNet(nn.Module):
                     end="\r",
                 )
 
+                # Take the current batch and separate the image (inputs) and the labels
                 inputs, labels = data
 
                 if _device is not None:
+                    # If using GPU, move data to the device
                     inputs = inputs.to(_device)
                     labels = labels.to(_device)
 
+                # Clear the values of the gradients (from prev. iteration)
                 optimizer.zero_grad()
 
+                # Extract the output to the current inputs (batch)
                 outputs = self(inputs)
+                # Evaluate the loss (plug actual labels vs. estimated outputs in obj func.)
                 loss = obj_func(outputs, labels)
+
+                # Backpropagation
                 loss.backward()
+                # Update model parameters
                 optimizer.step()
 
                 running_loss += loss.item()
@@ -132,20 +164,34 @@ class MyNet(nn.Module):
                 end="\r",
             )
 
+            # Store results
             train_accuracy = eval_accuracy(self, train_dataloader, _device)
+            self.loss_train[epoch] = running_loss / len(train_dataloader)
+            self.acc_train[epoch] = train_accuracy
+
             if test_dataloader is not None:
                 test_accuracy = eval_accuracy(self, test_dataloader, _device)
                 print(
-                    f"Epoch {epoch + 1}, Loss: {running_loss / len(train_dataloader)}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
+                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
                 )
             else:
                 print(
-                    f"Epoch {epoch + 1}, Loss: {running_loss / len(train_dataloader)}, Train Accuracy: {train_accuracy}%"
+                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%"
                 )
 
         print("Finished Training!")
         torch.save(self.state_dict(), model_path)
         print("Model stored at {}".format(model_path))
+
+    def print_results(self):
+        """
+        print_results
+        ---
+        Display plots of loss and accuracy vs. epoch.
+
+
+        """
+# +--------------------------------------------------------------------------------------+
 
 
 def splitDataset(
@@ -218,12 +264,14 @@ def splitDataset(
         if class_labels[class_curr] <= n_train:
             # Place current image in training set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(tr_path, class_curr, fname)
+                os.path.join(ds_path, fname), os.path.join(
+                    tr_path, class_curr, fname)
             )
         else:
             # Place current image in test set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(te_path, class_curr, fname)
+                os.path.join(ds_path, fname), os.path.join(
+                    te_path, class_curr, fname)
             )
 
     return list(class_labels.keys()), tr_path, te_path
@@ -238,7 +286,7 @@ def importDataset(
     Import the training set, given the path.
 
     ### Input parameters
-    - train_path: path of the trainin set folder
+    - ds_path: path of the trainin set folder
     - batch_size: batch size in data loader
     - shuffle: flag to select whether to shuffle the training elements
     or not in data loader
@@ -361,6 +409,8 @@ def loadingBar(
     n_prog = str("".join([n_ch] * (n_chars - n_elem - 1)))
     return "[" + prog + n_prog + "]"
 
+# +--------------------------------------------------------------------------------------+
+
 
 def main():
     script_folder = os.path.dirname(__file__)
@@ -397,12 +447,16 @@ def main():
     if VERB:
         print(tr_img.shape[2:4])
 
+    # Define Neural Network
     my_nn = MyNet(tr_img.shape[2:4], len(classes_map.keys()))
 
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.001, momentum=0.9)
+    # optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.01, momentum=0.9)
+    optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001)
 
     model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
+
+    # Launch training
 
     if torch.backends.mps.is_available() and MPS:
         print("Using MPS!")
@@ -416,10 +470,12 @@ def main():
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 40, dl_test, model_path, cuda_device
+            dl_train, optimizer, criterion, 5, dl_test, model_path, cuda_device
         )
     else:
         my_nn.train_nn(dl_train, optimizer, criterion, 10, dl_test, model_path)
+
+    # Print results
 
 
 if __name__ == "__main__":
