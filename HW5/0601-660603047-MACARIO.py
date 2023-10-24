@@ -549,7 +549,7 @@ def main():
     # optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.01, momentum=0.9)
     optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001)
 
-    model_path = os.path.join(script_folder, "0602-660603047-MACARIO_ubuntu.ZZZ")
+    model_path = os.path.join(script_folder, "0602-660603047-MACARIO_mac.ZZZ")
 
     # Launch training
 
