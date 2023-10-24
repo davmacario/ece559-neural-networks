@@ -358,6 +358,7 @@ def main():
     script_folder = os.path.dirname(__file__)
     dataset_path = os.path.join(script_folder, "output")
     train_path = os.path.join(script_folder, "train")
+    test_path = os.path.join(script_folder, "test")
     images_folder = os.path.join(script_folder, "img")
     n_training = 8000
 
@@ -368,6 +369,7 @@ def main():
         print("Training and test set already split!")
 
     dl_train, classes_map = importDataset(train_path)
+    dl_test, classes_map = importDataset(test_path)
 
     tr_img, tr_labels = next(iter(dl_train))
 
@@ -392,7 +394,7 @@ def main():
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.001, momentum=0.9)
 
-    model_path = os.path.join(script_folder, "shapes_model.pth")
+    model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
 
     if torch.backends.mps.is_available() and MPS:
         print("Using MPS!")
