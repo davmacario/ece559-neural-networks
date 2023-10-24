@@ -131,7 +131,7 @@ class MyNet(nn.Module):
             )
 
             train_accuracy = eval_accuracy(self, train_dataloader, _device)
-            if test_accuracy is not None:
+            if test_dataloader is not None:
                 test_accuracy = eval_accuracy(self, test_dataloader, _device)
                 print(
                     f"Epoch {epoch + 1}, Loss: {running_loss / len(train_dataloader)}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
