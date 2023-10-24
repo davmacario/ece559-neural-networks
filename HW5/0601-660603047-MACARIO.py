@@ -407,14 +407,14 @@ def main():
         mps_device = torch.device("mps")
         my_nn.to(mps_device)
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 10, dl_test, model_path, mps_device
+            dl_train, optimizer, criterion, 20, dl_test, model_path, mps_device
         )
     elif torch.cuda.is_available() and CUDA:
         print("Using CUDA!")
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 10, dl_test, model_path, cuda_device
+            dl_train, optimizer, criterion, 30, dl_test, model_path, cuda_device
         )
     else:
         my_nn.train_nn(dl_train, optimizer, criterion, 10, dl_test, model_path)
