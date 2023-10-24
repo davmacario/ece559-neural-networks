@@ -24,13 +24,20 @@ class MyNet(nn.Module):
     Neural network used for shape classification.
     """
 
-    def __init__(self, input_shape: (int, int), n_classes: int):
+    def __init__(
+        self,
+        input_shape: (int, int),
+        n_classes: int,
+        act_function: Callable = nn.functional.relu,
+    ):
         """
         Initialize the neural network.
 
         ### Input parameters
-        - input_shape:
-        - n_classes:
+        - input_shape: tuple of integers indicating the shape of the input
+        (maps x height x width)
+        - n_classes: number of classes for the classification model
+        - act_function: activation function of layers (not last one)
 
         ### Network structure (layers)
         -
@@ -39,6 +46,9 @@ class MyNet(nn.Module):
 
         self.input_size = input_shape
         self.n_classes = n_classes
+
+        # Activation function
+        self.act_func = act_function
 
         # Layer Definition
         self.pool_halve = nn.MaxPool2d(2, 2)
@@ -59,24 +69,31 @@ class MyNet(nn.Module):
         self.acc_train = None
         self.acc_test = None
 
-    def forward(
-        self, x, act_func: Callable = nn.functional.relu, softmax_out: bool = False
-    ):
+    def forward(self, x, softmax_out: bool = False):
         """
         forward
         ---
         Forward propagation in the neural network.
 
-        ## Network structure
+        ### Network structure
 
-        1. MaxPooling layer - downsampling images by 4
-        2. TODO
+        All convolutional and fully connected layers excluding the output layer use the
+        activation function passed to the class constructor.
+
+        1. MaxPooling layer, 4x4, stride = 4 - downsampling images by 4 -> (3 x 50 x 50)
+        2. Convolutional layer, 20 feature maps, 5x5 kernel, stride = 1,  -> (20 x 46 x 46)
+        3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (20 x 23 x 23)
+        4. Convolutional layer, 50 feature maps, 3x3 kernel, stride = 1 -> (50 x 21 x 21)
+        5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (50 x 10 x 10)
+        6. Flatten -> (1 x 5000)
+        7. Fully connected layer, 5000 -> 150
+        8. Fully connected layer, 150 -> 80
+        9. Fully connected layer, 80 -> 9 - OUTPUT
 
         ---
 
         ### Input parameters
         - x: input of the network
-        - act_func: activation function to be used in the intermediate layers
         - softmax_out: flag to indicate whether to apply softmax function at the
         output of the network
 
@@ -84,13 +101,13 @@ class MyNet(nn.Module):
         - y: output of the network [array]
         """
         y = self.pool_4(x)
-        y = self.pool_halve(act_func(self.conv1(y)))
-        y = self.pool_halve(act_func(self.conv2(y)))
+        y = self.pool_halve(self.act_func(self.conv1(y)))
+        y = self.pool_halve(self.act_func(self.conv2(y)))
         if VERB:
             print(y.shape)
         y = y.view(-1, self.len_1st_fc)
-        y = act_func(self.fc1(y))
-        y = act_func(self.fc2(y))
+        y = self.act_func(self.fc1(y))
+        y = self.act_func(self.fc2(y))
         if softmax_out:
             y = nn.functional.softmax(self.fc3(y), -1)
         else:
@@ -121,12 +138,12 @@ class MyNet(nn.Module):
         - mps_device: if passed, specify the presence of MPS (Apple silicon GPU)
         """
         self.n_epochs = n_epochs
-        self.loss_train = np.zeros((n_epochs, ))
-        self.acc_train = np.zeros((n_epochs, ))
+        self.loss_train = np.zeros((n_epochs,))
+        self.acc_train = np.zeros((n_epochs,))
 
         if test_dataloader is not None:
-            self.loss_test = np.zeros((n_epochs, ))
-            self.acc_test = np.zeros((n_epochs, ))
+            self.loss_test = np.zeros((n_epochs,))
+            self.acc_test = np.zeros((n_epochs,))
 
         for epoch in range(n_epochs):  # Change the number of epochs as needed
             running_loss = 0.0
@@ -174,7 +191,7 @@ class MyNet(nn.Module):
                 test_accuracy = eval_accuracy(self, test_dataloader, _device)
                 self.acc_test[epoch] = test_accuracy
 
-                loss_te = 0.
+                loss_te = 0.0
                 for i, data_te in enumerate(test_dataloader, 0):
                     in_te, lab_te = data_te
 
@@ -218,11 +235,16 @@ class MyNet(nn.Module):
 
         # Plot loss vs. epoch
         plt.figure(figsize=(10, 8))
-        plt.plot(list(range(1, self.n_epochs + 1)),
-                 self.loss_train, 'b', label="Train loss")
+        plt.plot(
+            list(range(1, self.n_epochs + 1)), self.loss_train, "b", label="Train loss"
+        )
         if flg_te:
-            plt.plot(list(range(1, self.n_epochs + 1)),
-                     self.loss_test, 'r', label="Test loss")
+            plt.plot(
+                list(range(1, self.n_epochs + 1)),
+                self.loss_test,
+                "r",
+                label="Test loss",
+            )
             plt.legend()
         plt.grid()
         plt.xlabel("Epoch")
@@ -235,11 +257,19 @@ class MyNet(nn.Module):
 
         # Plot accuracy vs. epoch
         plt.figure(figsize=(10, 8))
-        plt.plot(list(range(1, self.n_epochs + 1)),
-                 self.acc_train, 'b', label="Train accuracy")
+        plt.plot(
+            list(range(1, self.n_epochs + 1)),
+            self.acc_train,
+            "b",
+            label="Train accuracy",
+        )
         if flg_te:
-            plt.plot(list(range(1, self.n_epochs + 1)),
-                     self.acc_test, 'r', label="Test accuracy")
+            plt.plot(
+                list(range(1, self.n_epochs + 1)),
+                self.acc_test,
+                "r",
+                label="Test accuracy",
+            )
             plt.legend()
         plt.grid()
         plt.xlabel("Epoch")
@@ -249,6 +279,7 @@ class MyNet(nn.Module):
         if out_folder is not None:
             plt.savefig(os.path.join(out_folder, "acc_vs_epoch.png"))
         plt.show()
+
 
 # +--------------------------------------------------------------------------------------+
 
@@ -323,14 +354,12 @@ def splitDataset(
         if class_labels[class_curr] <= n_train:
             # Place current image in training set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(
-                    tr_path, class_curr, fname)
+                os.path.join(ds_path, fname), os.path.join(tr_path, class_curr, fname)
             )
         else:
             # Place current image in test set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(
-                    te_path, class_curr, fname)
+                os.path.join(ds_path, fname), os.path.join(te_path, class_curr, fname)
             )
 
     return list(class_labels.keys()), tr_path, te_path
@@ -474,6 +503,7 @@ def loadingBar(
     n_prog = str("".join([n_ch] * (n_chars - n_elem - 1)))
     return "[" + prog + n_prog + "]"
 
+
 # +--------------------------------------------------------------------------------------+
 
 
@@ -519,8 +549,7 @@ def main():
     # optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.01, momentum=0.9)
     optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001)
 
-    model_path = os.path.join(
-        script_folder, "0602-660603047-MACARIO_ubuntu.ZZZ")
+    model_path = os.path.join(script_folder, "0602-660603047-MACARIO_ubuntu.ZZZ")
 
     # Launch training
 
