@@ -159,6 +159,7 @@ class MyNet(nn.Module):
                 optimizer.step()
 
                 running_loss += loss.item()
+
             print(
                 f"Epoch {epoch + 1} done!                                                        ",
                 end="\r",
@@ -171,6 +172,19 @@ class MyNet(nn.Module):
 
             if test_dataloader is not None:
                 test_accuracy = eval_accuracy(self, test_dataloader, _device)
+                self.acc_test[epoch] = test_accuracy
+
+                loss_te = 0.
+                for i, data_te in enumerate(test_dataloader, 0):
+                    in_te, lab_te = data_te
+
+                    if _device is not None:
+                        in_te = in_te.to(_device)
+                        lab_te = lab_te.to(_device)
+
+                    loss_te += obj_func(self(in_te), lab_te).item()
+                self.loss_test[epoch] = loss_te / len(train_dataloader)
+
                 print(
                     f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
                 )
@@ -183,14 +197,59 @@ class MyNet(nn.Module):
         torch.save(self.state_dict(), model_path)
         print("Model stored at {}".format(model_path))
 
-    def print_results(self):
+    def print_results(self, flg_te: bool = False, out_folder: str = None):
         """
         print_results
         ---
         Display plots of loss and accuracy vs. epoch.
 
-
+        ### Input parameters
+        - flg_te: flag indicating whether to include the test set measurements
+        - out_folder: destination of produced plots
         """
+        if not os.path.isdir(out_folder):
+            raise NotADirectoryError("The specified path is not a directory!")
+
+        if self.loss_train is None or self.acc_train is None:
+            raise ValueError("Model was not trained!")
+
+        if flg_te and self.loss_test is None:
+            raise ValueError("Missing test (validation) set evaluation!")
+
+        # Plot loss vs. epoch
+        plt.figure(figsize=(10, 8))
+        plt.plot(list(range(1, self.n_epochs + 1)),
+                 self.loss_train, 'b', label="Train loss")
+        if flg_te:
+            plt.plot(list(range(1, self.n_epochs + 1)),
+                     self.loss_test, 'r', label="Test loss")
+            plt.legend()
+        plt.grid()
+        plt.xlabel("Epoch")
+        plt.ylabel("Loss")
+        plt.title("Loss vs. epoch number")
+        plt.tight_layout()
+        if out_folder is not None:
+            plt.savefig(os.path.join(out_folder, "loss_vs_epoch.png"))
+        plt.show()
+
+        # Plot accuracy vs. epoch
+        plt.figure(figsize=(10, 8))
+        plt.plot(list(range(1, self.n_epochs + 1)),
+                 self.acc_train, 'b', label="Train accuracy")
+        if flg_te:
+            plt.plot(list(range(1, self.n_epochs + 1)),
+                     self.acc_test, 'r', label="Test accuracy")
+            plt.legend()
+        plt.grid()
+        plt.xlabel("Epoch")
+        plt.ylabel("Accuracy (%)")
+        plt.title("Accuracy vs. epoch number")
+        plt.tight_layout()
+        if out_folder is not None:
+            plt.savefig(os.path.join(out_folder, "acc_vs_epoch.png"))
+        plt.show()
+
 # +--------------------------------------------------------------------------------------+
 
 
@@ -371,16 +430,22 @@ def eval_accuracy(
     - network: tested neural network (MyNet object)
     - data_loader: data set on which to evaluate accuracy
     - mps_dev: if not None, specify MPS device to be used
+
+    ### Output parameter
+    - Accuracy (in percentage)
     """
     correct = 0
     total = 0
     with torch.no_grad():
         for data in data_loader:
+            # Iterate on batches
             inputs, labels = data
             if _device is not None:
+                # Use GPU if available
                 inputs = inputs.to(_device)
                 labels = labels.to(_device)
             outputs = network(inputs)
+            # The output is evaluated on current *batch*!
             _, predicted = torch.max(outputs.data, 1)
             total += labels.size(0)
             correct += (predicted == labels).sum().item()
@@ -454,7 +519,8 @@ def main():
     # optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.01, momentum=0.9)
     optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001)
 
-    model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
+    model_path = os.path.join(
+        script_folder, "0602-660603047-MACARIO_ubuntu.ZZZ")
 
     # Launch training
 
@@ -470,12 +536,15 @@ def main():
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 5, dl_test, model_path, cuda_device
+            dl_train, optimizer, criterion, 2, dl_test, model_path, cuda_device
         )
     else:
         my_nn.train_nn(dl_train, optimizer, criterion, 10, dl_test, model_path)
 
     # Print results
+    if not os.path.isdir(images_folder):
+        os.mkdir(images_folder)
+    my_nn.print_results(flg_te=True, out_folder=images_folder)
 
 
 if __name__ == "__main__":
