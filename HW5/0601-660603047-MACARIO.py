@@ -2,7 +2,6 @@
 
 import torch
 from torch import nn
-import torchvision
 from torchvision import transforms, datasets
 import matplotlib.pyplot as plt
 import numpy as np
@@ -88,6 +87,7 @@ class MyNet(nn.Module):
         optimizer: Callable,
         obj_func: Callable,
         n_epochs: int,
+        test_dataloader: torch.utils.data.DataLoader = None,
         model_path: str = "shapes_model.pth",
         _device=None,
     ):
@@ -133,9 +133,15 @@ class MyNet(nn.Module):
             )
 
             train_accuracy = eval_accuracy(self, train_dataloader, _device)
-            print(
-                f"Epoch {epoch + 1}, Loss: {running_loss / len(train_dataloader)}, Train Accuracy: {train_accuracy}%"
-            )
+            if test_dataloader is not None:
+                test_accuracy = eval_accuracy(self, test_dataloader, _device)
+                print(
+                    f"Epoch {epoch + 1}, Loss: {running_loss / len(train_dataloader)}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
+                )
+            else:
+                print(
+                    f"Epoch {epoch + 1}, Loss: {running_loss / len(train_dataloader)}, Train Accuracy: {train_accuracy}%"
+                )
 
         print("Finished Training!")
         torch.save(self.state_dict(), model_path)
@@ -224,10 +230,10 @@ def splitDataset(
 
 
 def importDataset(
-    train_path: str, batch_size: int = 32, shuffle: bool = True
+    ds_path: str, batch_size: int = 32, shuffle: bool = True
 ) -> (torch.utils.data.DataLoader, dict):
     """
-    importTraining
+    importDataset
     ---
     Import the training set, given the path.
 
@@ -241,10 +247,10 @@ def importDataset(
     - train_data_loader: `torch.utils.data.DataLoader` object containing the training set
     - label_class_mapping: mapping between labels (integer numbers) and classes (dict)
     """
-    if not os.path.exists(train_path):
-        raise FileNotFoundError(f"The specified path ({train_path}) is invalid!")
+    if not os.path.exists(ds_path):
+        raise FileNotFoundError(f"The specified path ({ds_path}) is invalid!")
 
-    img_names = os.listdir(train_path)
+    img_names = os.listdir(ds_path)
     train_labels = []
     for fname in img_names:
         train_labels.append(str(fname.split("_")[0]))
@@ -257,14 +263,14 @@ def importDataset(
         ]
     )
 
-    train_images = datasets.ImageFolder(train_path, transf)
-    train_data_loader = torch.utils.data.DataLoader(
-        train_images, batch_size=batch_size, shuffle=shuffle
+    ds_images = datasets.ImageFolder(ds_path, transf)
+    ds_data_loader = torch.utils.data.DataLoader(
+        ds_images, batch_size=batch_size, shuffle=shuffle
     )
 
-    label_class_mapping = train_images.class_to_idx
+    label_class_mapping = ds_images.class_to_idx
 
-    return train_data_loader, label_class_mapping
+    return ds_data_loader, label_class_mapping
 
 
 def dispImages(
@@ -371,7 +377,7 @@ def main():
         print("Training and test set already split!")
 
     dl_train, classes_map = importDataset(train_path)
-    dl_test, classes_map = importDataset(test_path)
+    dl_test, _ = importDataset(test_path)
 
     tr_img, tr_labels = next(iter(dl_train))
 
@@ -402,14 +408,18 @@ def main():
         print("Using MPS!")
         mps_device = torch.device("mps")
         my_nn.to(mps_device)
-        my_nn.train_nn(dl_train, optimizer, criterion, 20, model_path, mps_device)
+        my_nn.train_nn(
+            dl_train, optimizer, criterion, 20, dl_test, model_path, mps_device
+        )
     elif torch.cuda.is_available() and CUDA:
         print("Using CUDA!")
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
-        my_nn.train_nn(dl_train, optimizer, criterion, 40, model_path, cuda_device)
+        my_nn.train_nn(
+            dl_train, optimizer, criterion, 40, dl_test, model_path, cuda_device
+        )
     else:
-        my_nn.train_nn(dl_train, optimizer, criterion, 10, model_path)
+        my_nn.train_nn(dl_train, optimizer, criterion, 10, dl_test, model_path)
 
 
 if __name__ == "__main__":
