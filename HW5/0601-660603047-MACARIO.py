@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import torch
 from torch import nn
 import torchvision
@@ -50,7 +52,7 @@ class MyNet(nn.Module):
         self.fc3 = nn.Linear(80, n_classes)
 
     def forward(
-        self, x, act_func: Callable = nn.functional.relu, softmax_out: bool = True
+        self, x, act_func: Callable = nn.functional.relu, softmax_out: bool = False
     ):
         """
         forward
@@ -400,12 +402,12 @@ def main():
         print("Using MPS!")
         mps_device = torch.device("mps")
         my_nn.to(mps_device)
-        my_nn.train_nn(dl_train, optimizer, criterion, 10, model_path, mps_device)
+        my_nn.train_nn(dl_train, optimizer, criterion, 20, model_path, mps_device)
     elif torch.cuda.is_available() and CUDA:
         print("Using CUDA!")
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
-        my_nn.train_nn(dl_train, optimizer, criterion, 10, model_path, cuda_device)
+        my_nn.train_nn(dl_train, optimizer, criterion, 20, model_path, cuda_device)
     else:
         my_nn.train_nn(dl_train, optimizer, criterion, 10, model_path)
 
