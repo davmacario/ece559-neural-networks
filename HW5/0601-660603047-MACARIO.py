@@ -407,7 +407,7 @@ def main():
         print("Using CUDA!")
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
-        my_nn.train_nn(dl_train, optimizer, criterion, 20, model_path, cuda_device)
+        my_nn.train_nn(dl_train, optimizer, criterion, 40, model_path, cuda_device)
     else:
         my_nn.train_nn(dl_train, optimizer, criterion, 10, model_path)
 
