@@ -1,6 +1,5 @@
 import torch
 from torch import nn
-import torchvision
 from torchvision import transforms, datasets
 import matplotlib.pyplot as plt
 import numpy as np
