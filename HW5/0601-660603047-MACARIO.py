@@ -10,6 +10,11 @@ import random
 import shutil
 from typing import Callable
 
+VERB = False
+PLOTS = False
+MPS = True
+CUDA = True
+
 
 class MyNet(nn.Module):
     """
@@ -32,14 +37,16 @@ class MyNet(nn.Module):
         super(MyNet, self).__init__()
 
         self.input_size = input_shape
+        self.n_classes = n_classes
         # Define layers
         self.pool_halve = nn.MaxPool2d(2, 2)
+        self.pool_4 = nn.MaxPool2d(4, 4)
         self.conv1 = nn.Conv2d(3, 20, 5)
         self.conv2 = nn.Conv2d(20, 50, 3)
 
-        self.len_1st_fc = int(50 * input_shape[0] / 8 * input_shape[1] / 8)
-        self.fc1 = nn.Linear(self.len_1st_fc, 200)
-        self.fc2 = nn.Linear(200, 80)
+        self.len_1st_fc = int(50 * 10 * 10)
+        self.fc1 = nn.Linear(self.len_1st_fc, 150)
+        self.fc2 = nn.Linear(150, 80)
         self.fc3 = nn.Linear(80, n_classes)
 
     def forward(
@@ -59,17 +66,78 @@ class MyNet(nn.Module):
         ### Output parameters
         - y: output of the network [array]
         """
-        y = self.pool_halve(x)
+        y = self.pool_4(x)
         y = self.pool_halve(act_func(self.conv1(y)))
         y = self.pool_halve(act_func(self.conv2(y)))
+        if VERB:
+            print(y.shape)
         y = y.view(-1, self.len_1st_fc)
         y = act_func(self.fc1(y))
         y = act_func(self.fc2(y))
         if softmax_out:
-            y = nn.functional.softmax(self.fc3(y))
+            y = nn.functional.softmax(self.fc3(y), -1)
         else:
             y = self.fc3(y)
         return y
+
+    def train_nn(
+        self,
+        train_dataloader: torch.utils.data.DataLoader,
+        optimizer: Callable,
+        obj_func: Callable,
+        n_epochs: int,
+        model_path: str = "shapes_model.pth",
+        _device=None,
+    ):
+        """
+        train_nn
+        ---
+        Train the neural network.
+
+        ### Input parameters
+        - train_dataloader: dataloader containing training data
+        - optimizer: training method
+        - obj_function: function to be minimized by the training procedure
+        - n_epochs: number of training epochs
+        - model_path: path of the output model
+        - mps_device: if passed, specify the presence of MPS (Apple silicon GPU)
+        """
+        for epoch in range(n_epochs):  # Change the number of epochs as needed
+            running_loss = 0.0
+            # print(loadingBar(epoch, n_epochs, 20), end="\r")
+            for i, data in enumerate(train_dataloader, 0):
+                print(
+                    f"> Current epoch - {loadingBar(i, len(train_dataloader), 30)} {round(100 * i / len(train_dataloader), 3)}%",
+                    end="\r",
+                )
+
+                inputs, labels = data
+
+                if _device is not None:
+                    inputs = inputs.to(_device)
+                    labels = labels.to(_device)
+
+                optimizer.zero_grad()
+
+                outputs = self(inputs)
+                loss = obj_func(outputs, labels)
+                loss.backward()
+                optimizer.step()
+
+                running_loss += loss.item()
+            print(
+                f"Epoch {epoch + 1} done!                                                        ",
+                end="\r",
+            )
+
+            train_accuracy = eval_accuracy(self, train_dataloader, _device)
+            print(
+                f"Epoch {epoch + 1}, Loss: {running_loss / len(train_dataloader)}, Train Accuracy: {train_accuracy}%"
+            )
+
+        print("Finished Training!")
+        torch.save(self.state_dict(), model_path)
+        print("Model stored at {}".format(model_path))
 
 
 def splitDataset(
@@ -133,7 +201,7 @@ def splitDataset(
         # Get class - if new one, append it to the vector of classes
         class_curr = str(fname.split("_")[0])
         if class_curr not in class_labels:
-            class_labels[class_curr] = 0
+            class_labels[class_curr] = 1
             os.mkdir(os.path.join(tr_path, class_curr))
             os.mkdir(os.path.join(te_path, class_curr))
         else:
@@ -154,7 +222,7 @@ def splitDataset(
 
 
 def importDataset(
-    train_path: str, batch_size: int = 16, shuffle: bool = True
+    train_path: str, batch_size: int = 32, shuffle: bool = True
 ) -> (torch.utils.data.DataLoader, dict):
     """
     importTraining
@@ -186,7 +254,6 @@ def importDataset(
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
         ]
     )
-    # TODO: maybe add transform.Normalize()
 
     train_images = datasets.ImageFolder(train_path, transf)
     train_data_loader = torch.utils.data.DataLoader(
@@ -236,10 +303,62 @@ def dispImages(
     plt.show()
 
 
-if __name__ == "__main__":
-    dataset_path = os.path.join(os.path.dirname(__file__), "output")
-    train_path = os.path.join(os.path.dirname(__file__), "train")
-    images_folder = os.path.join(os.path.dirname(__file__), "img")
+def eval_accuracy(
+    network: MyNet, data_loader: torch.utils.data.DataLoader, _device=None
+):
+    """
+    eval_accuracy
+    ---
+    Return the accuracy of the neural network on input data set.
+
+    ### Input parameters
+    - network: tested neural network (MyNet object)
+    - data_loader: data set on which to evaluate accuracy
+    - mps_dev: if not None, specify MPS device to be used
+    """
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for data in data_loader:
+            inputs, labels = data
+            if _device is not None:
+                inputs = inputs.to(_device)
+                labels = labels.to(_device)
+            outputs = network(inputs)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    return 100 * correct / total
+
+
+def loadingBar(
+    current_iter: int, tot_iter: int, n_chars: int = 10, ch: str = "=", n_ch: str = " "
+) -> str:
+    """
+    loadingBar
+    ---
+    Produce a loading bar string to be printed.
+
+    ### Input parameters
+    - current_iter: current iteration, will determine the position
+    of the current bar
+    - tot_iter: total number of iterations to be performed
+    - n_chars: total length of the loading bar in characters
+    - ch: character that makes up the loading bar (default: =)
+    - n_ch: character that makes up the remaining part of the bar
+    (default: blankspace)
+    """
+    n_elem = int(current_iter * n_chars / tot_iter)
+    prog = str("".join([ch] * n_elem))
+    n_prog = str("".join([n_ch] * (n_chars - n_elem - 1)))
+    return "[" + prog + n_prog + "]"
+
+
+def main():
+    script_folder = os.path.dirname(__file__)
+    dataset_path = os.path.join(script_folder, "output")
+    train_path = os.path.join(script_folder, "train")
+    images_folder = os.path.join(script_folder, "img")
     n_training = 8000
 
     try:
@@ -252,13 +371,42 @@ if __name__ == "__main__":
 
     tr_img, tr_labels = next(iter(dl_train))
 
-    dispImages(
-        tr_img,
-        tr_labels,
-        classes_map,
-        img_path=os.path.join(images_folder, "train_samples.png"),
-    )
+    if VERB:
+        print(tr_img)
+        print()
+        print(tr_labels)
 
-    print(tr_img.shape[2:4])
+    if PLOTS:
+        dispImages(
+            tr_img,
+            tr_labels,
+            classes_map,
+            img_path=os.path.join(images_folder, "train_samples.png"),
+        )
+
+    if VERB:
+        print(tr_img.shape[2:4])
 
     my_nn = MyNet(tr_img.shape[2:4], len(classes_map.keys()))
+
+    criterion = nn.CrossEntropyLoss()
+    optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.001, momentum=0.9)
+
+    model_path = os.path.join(script_folder, "shapes_model.pth")
+
+    if torch.backends.mps.is_available() and MPS:
+        print("Using MPS!")
+        mps_device = torch.device("mps")
+        my_nn.to(mps_device)
+        my_nn.train_nn(dl_train, optimizer, criterion, 10, model_path, mps_device)
+    elif torch.cuda.is_available() and CUDA:
+        print("Using CUDA!")
+        cuda_device = torch.device("cuda")
+        my_nn.to(cuda_device)
+        my_nn.train_nn(dl_train, optimizer, criterion, 10, model_path, cuda_device)
+    else:
+        my_nn.train_nn(dl_train, optimizer, criterion, 10, model_path)
+
+
+if __name__ == "__main__":
+    main()
