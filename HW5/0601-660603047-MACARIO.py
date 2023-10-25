@@ -527,6 +527,8 @@ def main():
 
     tr_img, tr_labels = next(iter(dl_train))
 
+    print(tr_labels)
+
     if VERB:
         print(tr_img)
         print()
