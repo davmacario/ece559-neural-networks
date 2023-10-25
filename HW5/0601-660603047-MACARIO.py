@@ -55,10 +55,10 @@ class MyNet(nn.Module):
         self.pool_halve = nn.MaxPool2d(2, 2)
         self.pool_4 = nn.MaxPool2d(4, 4)
 
-        self.conv1 = nn.Conv2d(3, 15, 5)
-        self.conv2 = nn.Conv2d(15, 30, 5)
+        self.conv1 = nn.Conv2d(3, 20, 5)
+        self.conv2 = nn.Conv2d(20, 50, 5)
 
-        self.len_1st_fc = int(30 * 9 * 9)
+        self.len_1st_fc = int(50 * 9 * 9)
         self.fc1 = nn.Linear(self.len_1st_fc, 120)
         self.fc2 = nn.Linear(120, 60)
         self.fc3 = nn.Linear(60, n_classes)
