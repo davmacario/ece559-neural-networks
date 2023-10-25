@@ -11,7 +11,8 @@ import random
 import shutil
 from typing import Callable
 
-VERB = False
+DEBUG = False
+VERB = True
 PLOTS = False
 MPS = True
 CUDA = True
@@ -56,11 +57,12 @@ class MyNet(nn.Module):
 
         self.conv1 = nn.Conv2d(3, 20, 5)
         self.conv2 = nn.Conv2d(20, 50, 3)
+        self.conv3 = nn.Conv2d(50, 70, 3)
 
-        self.len_1st_fc = int(50 * 10 * 10)
-        self.fc1 = nn.Linear(self.len_1st_fc, 150)
-        self.fc2 = nn.Linear(150, 80)
-        self.fc3 = nn.Linear(80, n_classes)
+        self.len_1st_fc = int(70 * 4 * 4)
+        self.fc1 = nn.Linear(self.len_1st_fc, 120)
+        self.fc2 = nn.Linear(120, 60)
+        self.fc3 = nn.Linear(60, n_classes)
 
         # Variables for displaying performance
         self.n_epochs = None
@@ -85,10 +87,12 @@ class MyNet(nn.Module):
         3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (20 x 23 x 23)
         4. Convolutional layer, 50 feature maps, 3x3 kernel, stride = 1 -> (50 x 21 x 21)
         5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (50 x 10 x 10)
-        6. Flatten -> (1 x 5000)
-        7. Fully connected layer, 5000 -> 150
-        8. Fully connected layer, 150 -> 80
-        9. Fully connected layer, 80 -> 9 - OUTPUT
+        6. Convolutional layer, 70 feature maps, 3x3 kernel, stride = 1 -> (70 x 8 x 8)
+        7. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (70 x 4 x 4)
+        8. Flatten -> (1 x 70*16)
+        9. Fully connected layer, 70*16 -> 120
+        10. Fully connected layer, 120 -> 60
+        11. Fully connected layer, 60 -> 9 - OUTPUT
 
         ---
 
@@ -103,7 +107,8 @@ class MyNet(nn.Module):
         y = self.pool_4(x)
         y = self.pool_halve(self.act_func(self.conv1(y)))
         y = self.pool_halve(self.act_func(self.conv2(y)))
-        if VERB:
+        y = self.pool_halve(self.act_func(self.conv3(y)))
+        if DEBUG:
             print(y.shape)
         y = y.view(-1, self.len_1st_fc)
         y = self.act_func(self.fc1(y))
@@ -149,10 +154,11 @@ class MyNet(nn.Module):
             running_loss = 0.0
             # print(loadingBar(epoch, n_epochs, 20), end="\r")
             for i, data in enumerate(train_dataloader, 0):
-                print(
-                    f"> Current epoch - {loadingBar(i, len(train_dataloader), 30)} {round(100 * i / len(train_dataloader), 3)}%",
-                    end="\r",
-                )
+                if VERB:
+                    print(
+                        f"> Current epoch - {loadingBar(i, len(train_dataloader), 30)} {round(100 * i / len(train_dataloader), 3)}%",
+                        end="\r",
+                    )
 
                 # Take the current batch and separate the image (inputs) and the labels
                 inputs, labels = data
@@ -177,10 +183,11 @@ class MyNet(nn.Module):
 
                 running_loss += loss.item()
 
-            print(
-                f"Epoch {epoch + 1} done!                                                        ",
-                end="\r",
-            )
+            if VERB:
+                print(
+                    f"Epoch {epoch + 1} done!                                                        ",
+                    end="\r",
+                )
 
             # Store results
             train_accuracy = eval_accuracy(self, train_dataloader, _device)
@@ -202,17 +209,30 @@ class MyNet(nn.Module):
                     loss_te += obj_func(self(in_te), lab_te).item()
                 self.loss_test[epoch] = loss_te / len(train_dataloader)
 
-                print(
-                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
-                )
-            else:
-                print(
-                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%"
-                )
+                if epoch == 0:
+                    max_acc_test = self.acc_test[epoch]
+                    best_epoch = epoch
 
-        print("Finished Training!")
-        torch.save(self.state_dict(), model_path)
-        print("Model stored at {}".format(model_path))
+                if self.acc_test[epoch] >= max_acc_test:
+                    # The saved model contains the parameters that perform best over
+                    #  the whole training in terms of accuracy on the validation set
+                    torch.save(self.state_dict(), model_path)
+                    max_acc_test = self.acc_test[epoch]
+                    best_epoch = epoch
+
+                if VERB:
+                    print(
+                        f"Epoch {epoch + 1}, Train Loss: {round(self.loss_train[epoch], 4)}, Train Accuracy: {round(train_accuracy, 4)}%, Test Loss: {round(self.loss_test[epoch], 4)}, Test Accuracy: {round(test_accuracy, 4)}"
+                    )
+            else:
+                if VERB:
+                    print(
+                        f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%"
+                    )
+
+        if VERB:
+            print("Finished Training!")
+            print(f"Model stored at {model_path} - from epoch {best_epoch + 1}")
 
     def print_results(self, flg_te: bool = False, out_folder: str = None):
         """
@@ -530,6 +550,10 @@ def main():
     print(classes_map)
 
     if VERB:
+        # Print the class labels - for inference module
+        print(classes_map)
+
+    if DEBUG:
         print(tr_img)
         print()
         print(tr_labels)
@@ -542,14 +566,14 @@ def main():
             img_path=os.path.join(images_folder, "train_samples.png"),
         )
 
-    if VERB:
+    if DEBUG:
         print(tr_img.shape[2:4])
 
     # Define Neural Network
     my_nn = MyNet(tr_img.shape[2:4], len(classes_map.keys()))
 
     criterion = nn.CrossEntropyLoss()
-    # Optimize with regularization (weight_decay)
+    # Adam optimizer with regularization
     optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001, weight_decay=1e-5)
 
     # Launch training
