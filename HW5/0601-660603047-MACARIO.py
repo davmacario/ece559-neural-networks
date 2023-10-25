@@ -57,8 +57,9 @@ class MyNet(nn.Module):
 
         self.conv1 = nn.Conv2d(3, 20, 5)
         self.conv2 = nn.Conv2d(20, 50, 3)
+        self.conv3 = nn.Conv2d(50, 70, 3)
 
-        self.len_1st_fc = int(50 * 10 * 10)
+        self.len_1st_fc = int(70 * 4 * 4)
         self.fc1 = nn.Linear(self.len_1st_fc, 120)
         self.fc2 = nn.Linear(120, 60)
         self.fc3 = nn.Linear(60, n_classes)
@@ -86,10 +87,12 @@ class MyNet(nn.Module):
         3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (20 x 23 x 23)
         4. Convolutional layer, 50 feature maps, 3x3 kernel, stride = 1 -> (50 x 21 x 21)
         5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (50 x 10 x 10)
-        6. Flatten -> (1 x 5000)
-        7. Fully connected layer, 5000 -> 120
-        8. Fully connected layer, 120 -> 60
-        9. Fully connected layer, 60 -> 9 - OUTPUT
+        6. Convolutional layer, 70 feature maps, 3x3 kernel, stride = 1 -> (70 x 8 x 8)
+        7. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (70 x 4 x 4)
+        8. Flatten -> (1 x 70*16)
+        9. Fully connected layer, 70*16 -> 120
+        10. Fully connected layer, 120 -> 60
+        11. Fully connected layer, 60 -> 9 - OUTPUT
 
         ---
 
@@ -104,6 +107,7 @@ class MyNet(nn.Module):
         y = self.pool_4(x)
         y = self.pool_halve(self.act_func(self.conv1(y)))
         y = self.pool_halve(self.act_func(self.conv2(y)))
+        y = self.pool_halve(self.act_func(self.conv3(y)))
         if DEBUG:
             print(y.shape)
         y = y.view(-1, self.len_1st_fc)
@@ -543,6 +547,10 @@ def main():
 
     tr_img, tr_labels = next(iter(dl_train))
 
+    if VERB:
+        # Print the class labels - for inference module
+        print(tr_labels)
+
     if DEBUG:
         print(tr_img)
         print()
@@ -563,8 +571,8 @@ def main():
     my_nn = MyNet(tr_img.shape[2:4], len(classes_map.keys()))
 
     criterion = nn.CrossEntropyLoss()
-    # optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.01, momentum=0.9)
-    optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001)
+    # Adam optimizer with regularization
+    optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001, weight_decay=1e-5)
 
     # Launch training
 
