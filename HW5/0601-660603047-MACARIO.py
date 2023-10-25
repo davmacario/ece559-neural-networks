@@ -28,7 +28,7 @@ class MyNet(nn.Module):
     def __init__(
         self,
         input_shape: (int, int),
-        n_classes: int,
+        class_map: dict,
         act_function: Callable = nn.functional.relu,
     ):
         """
@@ -46,7 +46,8 @@ class MyNet(nn.Module):
         super(MyNet, self).__init__()
 
         self.input_size = input_shape
-        self.n_classes = n_classes
+        self.n_classes = len(class_map.keys())
+        self.class_mapping = class_map
 
         # Activation function
         self.act_func = act_function
@@ -62,7 +63,7 @@ class MyNet(nn.Module):
         self.len_1st_fc = int(70 * 4 * 4)
         self.fc1 = nn.Linear(self.len_1st_fc, 120)
         self.fc2 = nn.Linear(120, 60)
-        self.fc3 = nn.Linear(60, n_classes)
+        self.fc3 = nn.Linear(60, self.n_classes)
 
         # Variables for displaying performance
         self.n_epochs = None
@@ -569,7 +570,7 @@ def main():
         print(tr_img.shape[2:4])
 
     # Define Neural Network
-    my_nn = MyNet(tr_img.shape[2:4], len(classes_map.keys()))
+    my_nn = MyNet(tr_img.shape[2:4], classes_map)
 
     criterion = nn.CrossEntropyLoss()
     # Adam optimizer with regularization
