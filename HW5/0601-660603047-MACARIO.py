@@ -549,7 +549,7 @@ def main():
 
     if VERB:
         # Print the class labels - for inference module
-        print(tr_labels)
+        print(classes_map)
 
     if DEBUG:
         print(tr_img)
