@@ -547,8 +547,8 @@ def main():
     my_nn = MyNet(tr_img.shape[2:4], len(classes_map.keys()))
 
     criterion = nn.CrossEntropyLoss()
-    # optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.01, momentum=0.9)
-    optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001)
+    # Optimize with regularization (weight_decay)
+    optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001, weight_decay=1e-5)
 
     # Launch training
 
@@ -558,7 +558,7 @@ def main():
         my_nn.to(mps_device)
         model_path = os.path.join(script_folder, "0602-660603047-MACARIO_mac.ZZZ")
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 20, dl_test, model_path, mps_device
+            dl_train, optimizer, criterion, 40, dl_test, model_path, mps_device
         )
     elif torch.cuda.is_available() and CUDA:
         print("Using CUDA!")
