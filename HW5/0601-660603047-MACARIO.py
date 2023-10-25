@@ -55,12 +55,12 @@ class MyNet(nn.Module):
         self.pool_4 = nn.MaxPool2d(4, 4)
 
         self.conv1 = nn.Conv2d(3, 20, 5)
-        self.conv2 = nn.Conv2d(20, 50, 3)
+        self.conv2 = nn.Conv2d(20, 50, 5)
 
-        self.len_1st_fc = int(50 * 10 * 10)
-        self.fc1 = nn.Linear(self.len_1st_fc, 150)
-        self.fc2 = nn.Linear(150, 80)
-        self.fc3 = nn.Linear(80, n_classes)
+        self.len_1st_fc = int(50 * 9 * 9)
+        self.fc1 = nn.Linear(self.len_1st_fc, 100)
+        self.fc2 = nn.Linear(100, 60)
+        self.fc3 = nn.Linear(60, n_classes)
 
         # Variables for displaying performance
         self.n_epochs = None
@@ -80,15 +80,15 @@ class MyNet(nn.Module):
         All convolutional and fully connected layers excluding the output layer use the
         activation function passed to the class constructor.
 
-        1. MaxPooling layer, 4x4, stride = 4 - downsampling images by 4 -> (3 x 50 x 50)
+        1. MaxPooling layer, 4x4, stride = 4 - downsampling images by 2 -> (3 x 50 x 50)
         2. Convolutional layer, 20 feature maps, 5x5 kernel, stride = 1,  -> (20 x 46 x 46)
         3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (20 x 23 x 23)
-        4. Convolutional layer, 50 feature maps, 3x3 kernel, stride = 1 -> (50 x 21 x 21)
-        5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (50 x 10 x 10)
-        6. Flatten -> (1 x 5000)
-        7. Fully connected layer, 5000 -> 150
-        8. Fully connected layer, 150 -> 80
-        9. Fully connected layer, 80 -> 9 - OUTPUT
+        4. Convolutional layer, 50 feature maps, 5x5 kernel, stride = 1 -> (50 x 19 x 19)
+        5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (50 x 9 x 9)
+        6. Flatten -> (1 x -)
+        7. Fully connected layer, - -> 100
+        8. Fully connected layer, 100 -> 60
+        9. Fully connected layer, 60 -> 9 - OUTPUT
 
         ---
 
@@ -203,11 +203,11 @@ class MyNet(nn.Module):
                 self.loss_test[epoch] = loss_te / len(train_dataloader)
 
                 print(
-                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
+                    f"Epoch {epoch + 1}, Train Loss: {round(self.loss_train[epoch], 4)}, Train Accuracy: {round(train_accuracy, 4)}%, Test Loss: {round(self.loss_test[epoch], 4)}, Test Accuracy: {round(test_accuracy, 4)}"
                 )
             else:
                 print(
-                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%"
+                    f"Epoch {epoch + 1}, Train Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%"
                 )
 
         print("Finished Training!")
@@ -570,7 +570,7 @@ def main():
         model_path = os.path.join(
             script_folder, "0602-660603047-MACARIO_ubuntu_TEST.ZZZ")
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 40, dl_test, model_path, cuda_device
+            dl_train, optimizer, criterion, 10, dl_test, model_path, cuda_device
         )
     else:
         model_path = os.path.join(
