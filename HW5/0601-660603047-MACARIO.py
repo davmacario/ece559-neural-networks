@@ -206,10 +206,10 @@ class MyNet(nn.Module):
                 self.loss_test[epoch] = loss_te / len(train_dataloader)
 
                 if epoch == 0:
-                    min_loss_test = self.loss_test[epoch]
+                    min_acc_test = self.acc_test[epoch]
                     best_epoch = epoch
 
-                if self.loss_test[epoch] <= min_loss_test:
+                if self.acc_test[epoch] <= min_acc_test:
                     # The saved model contains the parameters that perform best over the whole training
                     torch.save(self.state_dict(), model_path)
 
