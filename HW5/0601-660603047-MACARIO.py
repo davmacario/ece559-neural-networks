@@ -583,7 +583,7 @@ def main():
         model_path = os.path.join(
             script_folder, "0602-660603047-MACARIO_ubuntu_A.ZZZ")
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 10, dl_test, model_path, cuda_device
+            dl_train, optimizer, criterion, 40, dl_test, model_path, cuda_device
         )
     else:
         model_path = os.path.join(
