@@ -55,10 +55,10 @@ class MyNet(nn.Module):
         self.pool_halve = nn.MaxPool2d(2, 2)
         self.pool_4 = nn.MaxPool2d(4, 4)
 
-        self.conv1 = nn.Conv2d(3, 15, 5)
-        self.conv2 = nn.Conv2d(15, 30, 5)
+        self.conv1 = nn.Conv2d(3, 20, 5)
+        self.conv2 = nn.Conv2d(20, 50, 3)
 
-        self.len_1st_fc = int(30 * 9 * 9)
+        self.len_1st_fc = int(50 * 10 * 10)
         self.fc1 = nn.Linear(self.len_1st_fc, 120)
         self.fc2 = nn.Linear(120, 60)
         self.fc3 = nn.Linear(60, n_classes)
@@ -82,10 +82,10 @@ class MyNet(nn.Module):
         activation function passed to the class constructor.
 
         1. MaxPooling layer, 4x4, stride = 4 - downsampling images by 4 -> (3 x 50 x 50)
-        2. Convolutional layer, 15 feature maps, 5x5 kernel, stride = 1,  -> (15 x 46 x 46)
-        3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (15 x 23 x 23)
-        4. Convolutional layer, 30 feature maps, 5x5 kernel, stride = 1 -> (30 x 19 x 19)
-        5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (30 x 9 x 9)
+        2. Convolutional layer, 20 feature maps, 5x5 kernel, stride = 1,  -> (20 x 46 x 46)
+        3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (20 x 23 x 23)
+        4. Convolutional layer, 50 feature maps, 3x3 kernel, stride = 1 -> (50 x 21 x 21)
+        5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (50 x 10 x 10)
         6. Flatten -> (1 x 5000)
         7. Fully connected layer, 5000 -> 120
         8. Fully connected layer, 120 -> 60
