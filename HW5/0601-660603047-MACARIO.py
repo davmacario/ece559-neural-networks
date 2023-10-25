@@ -527,7 +527,7 @@ def main():
 
     tr_img, tr_labels = next(iter(dl_train))
 
-    print(tr_labels)
+    print(classes_map)
 
     if VERB:
         print(tr_img)
