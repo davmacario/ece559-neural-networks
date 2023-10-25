@@ -588,7 +588,7 @@ def main():
         print("Using CUDA!")
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_ubuntu_A.ZZZ")
+        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_ubuntu.ZZZ")
         my_nn.train_nn(
             dl_train, optimizer, criterion, 40, dl_test, model_path, cuda_device
         )
