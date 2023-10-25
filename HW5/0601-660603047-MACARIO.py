@@ -11,7 +11,8 @@ import random
 import shutil
 from typing import Callable
 
-VERB = False
+DEBUG = False
+VERB = True
 PLOTS = False
 MPS = True
 CUDA = True
@@ -54,13 +55,13 @@ class MyNet(nn.Module):
         self.pool_halve = nn.MaxPool2d(2, 2)
         self.pool_4 = nn.MaxPool2d(4, 4)
 
-        self.conv1 = nn.Conv2d(3, 20, 5)
-        self.conv2 = nn.Conv2d(20, 50, 3)
+        self.conv1 = nn.Conv2d(3, 15, 5)
+        self.conv2 = nn.Conv2d(15, 30, 5)
 
-        self.len_1st_fc = int(50 * 10 * 10)
-        self.fc1 = nn.Linear(self.len_1st_fc, 150)
-        self.fc2 = nn.Linear(150, 80)
-        self.fc3 = nn.Linear(80, n_classes)
+        self.len_1st_fc = int(30 * 9 * 9)
+        self.fc1 = nn.Linear(self.len_1st_fc, 120)
+        self.fc2 = nn.Linear(120, 60)
+        self.fc3 = nn.Linear(60, n_classes)
 
         # Variables for displaying performance
         self.n_epochs = None
@@ -69,7 +70,7 @@ class MyNet(nn.Module):
         self.acc_train = None
         self.acc_test = None
 
-    def forward(self, x, softmax_out: bool = True):
+    def forward(self, x, softmax_out: bool = False):
         """
         forward
         ---
@@ -81,14 +82,14 @@ class MyNet(nn.Module):
         activation function passed to the class constructor.
 
         1. MaxPooling layer, 4x4, stride = 4 - downsampling images by 4 -> (3 x 50 x 50)
-        2. Convolutional layer, 20 feature maps, 5x5 kernel, stride = 1,  -> (20 x 46 x 46)
-        3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (20 x 23 x 23)
-        4. Convolutional layer, 50 feature maps, 3x3 kernel, stride = 1 -> (50 x 21 x 21)
-        5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (50 x 10 x 10)
+        2. Convolutional layer, 15 feature maps, 5x5 kernel, stride = 1,  -> (15 x 46 x 46)
+        3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (15 x 23 x 23)
+        4. Convolutional layer, 30 feature maps, 5x5 kernel, stride = 1 -> (30 x 19 x 19)
+        5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (30 x 9 x 9)
         6. Flatten -> (1 x 5000)
-        7. Fully connected layer, 5000 -> 150
-        8. Fully connected layer, 150 -> 80
-        9. Fully connected layer, 80 -> 9 - OUTPUT
+        7. Fully connected layer, 5000 -> 120
+        8. Fully connected layer, 120 -> 60
+        9. Fully connected layer, 60 -> 9 - OUTPUT
 
         ---
 
@@ -103,7 +104,7 @@ class MyNet(nn.Module):
         y = self.pool_4(x)
         y = self.pool_halve(self.act_func(self.conv1(y)))
         y = self.pool_halve(self.act_func(self.conv2(y)))
-        if VERB:
+        if DEBUG:
             print(y.shape)
         y = y.view(-1, self.len_1st_fc)
         y = self.act_func(self.fc1(y))
@@ -149,10 +150,11 @@ class MyNet(nn.Module):
             running_loss = 0.0
             # print(loadingBar(epoch, n_epochs, 20), end="\r")
             for i, data in enumerate(train_dataloader, 0):
-                print(
-                    f"> Current epoch - {loadingBar(i, len(train_dataloader), 30)} {round(100 * i / len(train_dataloader), 3)}%",
-                    end="\r",
-                )
+                if VERB:
+                    print(
+                        f"> Current epoch - {loadingBar(i, len(train_dataloader), 30)} {round(100 * i / len(train_dataloader), 3)}%",
+                        end="\r",
+                    )
 
                 # Take the current batch and separate the image (inputs) and the labels
                 inputs, labels = data
@@ -177,10 +179,11 @@ class MyNet(nn.Module):
 
                 running_loss += loss.item()
 
-            print(
-                f"Epoch {epoch + 1} done!                                                        ",
-                end="\r",
-            )
+            if VERB:
+                print(
+                    f"Epoch {epoch + 1} done!                                                        ",
+                    end="\r",
+                )
 
             # Store results
             train_accuracy = eval_accuracy(self, train_dataloader, _device)
@@ -202,17 +205,27 @@ class MyNet(nn.Module):
                     loss_te += obj_func(self(in_te), lab_te).item()
                 self.loss_test[epoch] = loss_te / len(train_dataloader)
 
-                print(
-                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
-                )
-            else:
-                print(
-                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%"
-                )
+                if epoch == 0:
+                    min_loss_test = self.loss_test[epoch]
+                    best_epoch = epoch
 
-        print("Finished Training!")
-        torch.save(self.state_dict(), model_path)
-        print("Model stored at {}".format(model_path))
+                if self.loss_test[epoch] <= min_loss_test:
+                    # The saved model contains the parameters that perform best over the whole training
+                    torch.save(self.state_dict(), model_path)
+
+                if VERB:
+                    print(
+                        f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
+                    )
+            else:
+                if VERB:
+                    print(
+                        f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%"
+                    )
+
+        if VERB:
+            print("Finished Training!")
+            print(f"Model stored at {model_path} - from epoch {best_epoch}")
 
     def print_results(self, flg_te: bool = False, out_folder: str = None):
         """
@@ -529,7 +542,7 @@ def main():
 
     tr_img, tr_labels = next(iter(dl_train))
 
-    if VERB:
+    if DEBUG:
         print(tr_img)
         print()
         print(tr_labels)
@@ -542,7 +555,7 @@ def main():
             img_path=os.path.join(images_folder, "train_samples.png"),
         )
 
-    if VERB:
+    if DEBUG:
         print(tr_img.shape[2:4])
 
     # Define Neural Network
