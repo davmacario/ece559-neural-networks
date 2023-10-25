@@ -533,7 +533,6 @@ def main():
     train_path = os.path.join(script_folder, "train")
     test_path = os.path.join(script_folder, "test")
     images_folder = os.path.join(script_folder, "img")
-    model_path = os.path.join(script_folder, "0602-660603047-MACARIO_mac.ZZZ")
     n_training = 8000
 
     try:
@@ -582,7 +581,7 @@ def main():
         print("Using MPS!")
         mps_device = torch.device("mps")
         my_nn.to(mps_device)
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_mac.ZZZ")
+        model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
         my_nn.train_nn(
             dl_train, optimizer, criterion, 40, dl_test, model_path, mps_device
         )
@@ -590,12 +589,12 @@ def main():
         print("Using CUDA!")
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_ubuntu.ZZZ")
+        model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
         my_nn.train_nn(
             dl_train, optimizer, criterion, 40, dl_test, model_path, cuda_device
         )
     else:
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_cpu.ZZZ")
+        model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
         my_nn.train_nn(dl_train, optimizer, criterion, 10, dl_test, model_path)
 
     # Print results
