@@ -69,7 +69,7 @@ class MyNet(nn.Module):
         self.acc_train = None
         self.acc_test = None
 
-    def forward(self, x, softmax_out: bool = False):
+    def forward(self, x, softmax_out: bool = True):
         """
         forward
         ---
@@ -354,12 +354,14 @@ def splitDataset(
         if class_labels[class_curr] <= n_train:
             # Place current image in training set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(tr_path, class_curr, fname)
+                os.path.join(ds_path, fname), os.path.join(
+                    tr_path, class_curr, fname)
             )
         else:
             # Place current image in test set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(te_path, class_curr, fname)
+                os.path.join(ds_path, fname), os.path.join(
+                    te_path, class_curr, fname)
             )
 
     return list(class_labels.keys()), tr_path, te_path
@@ -556,7 +558,8 @@ def main():
         print("Using MPS!")
         mps_device = torch.device("mps")
         my_nn.to(mps_device)
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_mac.ZZZ")
+        model_path = os.path.join(
+            script_folder, "0602-660603047-MACARIO_mac.ZZZ")
         my_nn.train_nn(
             dl_train, optimizer, criterion, 20, dl_test, model_path, mps_device
         )
@@ -564,12 +567,14 @@ def main():
         print("Using CUDA!")
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_ubuntu.ZZZ")
+        model_path = os.path.join(
+            script_folder, "0602-660603047-MACARIO_ubuntu_TEST.ZZZ")
         my_nn.train_nn(
             dl_train, optimizer, criterion, 40, dl_test, model_path, cuda_device
         )
     else:
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_cpu.ZZZ")
+        model_path = os.path.join(
+            script_folder, "0602-660603047-MACARIO_cpu.ZZZ")
         my_nn.train_nn(dl_train, optimizer, criterion, 10, dl_test, model_path)
 
     # Print results
