@@ -209,9 +209,10 @@ class MyNet(nn.Module):
                     min_acc_test = self.acc_test[epoch]
                     best_epoch = epoch
 
-                if self.acc_test[epoch] <= min_acc_test:
+                if self.acc_test[epoch] >= min_acc_test:
                     # The saved model contains the parameters that perform best over the whole training
                     torch.save(self.state_dict(), model_path)
+                    best_epoch = epoch
 
                 if VERB:
                     print(
