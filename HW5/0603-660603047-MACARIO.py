@@ -33,8 +33,6 @@ class MyNet(nn.Module):
     MyNet
     ---
     Neural network used for shape classification.
-
-    (from 0601-660603047-MACARIO.py)
     """
 
     def __init__(
@@ -77,6 +75,8 @@ class MyNet(nn.Module):
         self.fc2 = nn.Linear(120, 60)
         self.fc3 = nn.Linear(60, self.n_classes)
 
+        self.do = nn.Dropout(0.2)
+
         # Variables for displaying performance
         self.n_epochs = None
         self.loss_train = None
@@ -84,10 +84,7 @@ class MyNet(nn.Module):
         self.acc_train = None
         self.acc_test = None
 
-        # Keep track of mode of operation
-        self.net_loaded = False  # True if parameters have been loaded for inference and net is in evaluation mode
-
-    def forward(self, x, softmax_out: bool = False):
+    def forward(self, x, softmax_out: bool = False, dropout: bool = True):
         """
         forward
         ---
@@ -116,6 +113,7 @@ class MyNet(nn.Module):
         - x: input of the network
         - softmax_out: flag to indicate whether to apply softmax function at the
         output of the network
+        - dropout: flag to select dropout
 
         ### Output parameters
         - y: output of the network [array]
@@ -127,6 +125,8 @@ class MyNet(nn.Module):
         if DEBUG:
             print(y.shape)
         y = y.view(-1, self.len_1st_fc)
+        if dropout:
+            y = self.do(y)
         y = self.act_func(self.fc1(y))
         y = self.act_func(self.fc2(y))
         if softmax_out:
@@ -155,8 +155,9 @@ class MyNet(nn.Module):
         - optimizer: training method
         - obj_function: function to be minimized by the training procedure
         - n_epochs: number of training epochs
+        - test_dataloader: if not None, it is the available device that can be used for training (GPU)
         - model_path: path of the output model
-        - mps_device: if passed, specify the presence of MPS (Apple silicon GPU)
+        - _device: if passed, specify the presence of MPS (Apple silicon GPU)
         """
         self.n_epochs = n_epochs
         self.loss_train = np.zeros((n_epochs,))
