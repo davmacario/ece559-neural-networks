@@ -5,12 +5,16 @@ from torch import nn
 from torchvision import transforms, datasets
 import matplotlib.pyplot as plt
 import numpy as np
+from PIL import Image
 import os
 import sys
 import random
 import shutil
 from typing import Callable
 
+VERB = True
+DEBUG = False
+IMG_SHAPE = (3, 200, 200)
 CLASS_MAP = {
     "Circle": 0,
     "Heptagon": 1,
@@ -36,7 +40,7 @@ class MyNet(nn.Module):
     def __init__(
         self,
         input_shape: (int, int),
-        n_classes: int,
+        class_map: dict,
         act_function: Callable = nn.functional.relu,
     ):
         """
@@ -54,7 +58,8 @@ class MyNet(nn.Module):
         super(MyNet, self).__init__()
 
         self.input_size = input_shape
-        self.n_classes = n_classes
+        self.n_classes = len(class_map.keys())
+        self.class_mapping = class_map
 
         # Activation function
         self.act_func = act_function
@@ -65,11 +70,12 @@ class MyNet(nn.Module):
 
         self.conv1 = nn.Conv2d(3, 20, 5)
         self.conv2 = nn.Conv2d(20, 50, 3)
+        self.conv3 = nn.Conv2d(50, 70, 3)
 
-        self.len_1st_fc = int(50 * 10 * 10)
-        self.fc1 = nn.Linear(self.len_1st_fc, 150)
-        self.fc2 = nn.Linear(150, 80)
-        self.fc3 = nn.Linear(80, n_classes)
+        self.len_1st_fc = int(70 * 4 * 4)
+        self.fc1 = nn.Linear(self.len_1st_fc, 120)
+        self.fc2 = nn.Linear(120, 60)
+        self.fc3 = nn.Linear(60, self.n_classes)
 
         # Variables for displaying performance
         self.n_epochs = None
@@ -77,6 +83,9 @@ class MyNet(nn.Module):
         self.loss_test = None
         self.acc_train = None
         self.acc_test = None
+
+        # Keep track of mode of operation
+        self.net_loaded = False  # True if parameters have been loaded for inference and net is in evaluation mode
 
     def forward(self, x, softmax_out: bool = False):
         """
@@ -94,10 +103,12 @@ class MyNet(nn.Module):
         3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (20 x 23 x 23)
         4. Convolutional layer, 50 feature maps, 3x3 kernel, stride = 1 -> (50 x 21 x 21)
         5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (50 x 10 x 10)
-        6. Flatten -> (1 x 5000)
-        7. Fully connected layer, 5000 -> 150
-        8. Fully connected layer, 150 -> 80
-        9. Fully connected layer, 80 -> 9 - OUTPUT
+        6. Convolutional layer, 70 feature maps, 3x3 kernel, stride = 1 -> (70 x 8 x 8)
+        7. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (70 x 4 x 4)
+        8. Flatten -> (1 x 70*16)
+        9. Fully connected layer, 70*16 -> 120
+        10. Fully connected layer, 120 -> 60
+        11. Fully connected layer, 60 -> 9 - OUTPUT
 
         ---
 
@@ -112,7 +123,8 @@ class MyNet(nn.Module):
         y = self.pool_4(x)
         y = self.pool_halve(self.act_func(self.conv1(y)))
         y = self.pool_halve(self.act_func(self.conv2(y)))
-        if VERB:
+        y = self.pool_halve(self.act_func(self.conv3(y)))
+        if DEBUG:
             print(y.shape)
         y = y.view(-1, self.len_1st_fc)
         y = self.act_func(self.fc1(y))
@@ -158,10 +170,11 @@ class MyNet(nn.Module):
             running_loss = 0.0
             # print(loadingBar(epoch, n_epochs, 20), end="\r")
             for i, data in enumerate(train_dataloader, 0):
-                print(
-                    f"> Current epoch - {loadingBar(i, len(train_dataloader), 30)} {round(100 * i / len(train_dataloader), 3)}%",
-                    end="\r",
-                )
+                if VERB:
+                    print(
+                        f"> Current epoch - {loadingBar(i, len(train_dataloader), 30)} {round(100 * i / len(train_dataloader), 3)}%",
+                        end="\r",
+                    )
 
                 # Take the current batch and separate the image (inputs) and the labels
                 inputs, labels = data
@@ -186,10 +199,11 @@ class MyNet(nn.Module):
 
                 running_loss += loss.item()
 
-            print(
-                f"Epoch {epoch + 1} done!                                                        ",
-                end="\r",
-            )
+            if VERB:
+                print(
+                    f"Epoch {epoch + 1} done!                                                        ",
+                    end="\r",
+                )
 
             # Store results
             train_accuracy = eval_accuracy(self, train_dataloader, _device)
@@ -211,17 +225,30 @@ class MyNet(nn.Module):
                     loss_te += obj_func(self(in_te), lab_te).item()
                 self.loss_test[epoch] = loss_te / len(train_dataloader)
 
-                print(
-                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%, Test Accuracy: {test_accuracy}"
-                )
-            else:
-                print(
-                    f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%"
-                )
+                if epoch == 0:
+                    max_acc_test = self.acc_test[epoch]
+                    best_epoch = epoch
 
-        print("Finished Training!")
-        torch.save(self.state_dict(), model_path)
-        print("Model stored at {}".format(model_path))
+                if self.acc_test[epoch] >= max_acc_test:
+                    # The saved model contains the parameters that perform best over
+                    #  the whole training in terms of accuracy on the validation set
+                    torch.save(self.state_dict(), model_path)
+                    max_acc_test = self.acc_test[epoch]
+                    best_epoch = epoch
+
+                if VERB:
+                    print(
+                        f"Epoch {epoch + 1}, Train Loss: {round(self.loss_train[epoch], 4)}, Train Accuracy: {round(train_accuracy, 4)}%, Test Loss: {round(self.loss_test[epoch], 4)}, Test Accuracy: {round(test_accuracy, 4)}"
+                    )
+            else:
+                if VERB:
+                    print(
+                        f"Epoch {epoch + 1}, Loss: {self.loss_train[epoch]}, Train Accuracy: {train_accuracy}%"
+                    )
+
+        if VERB:
+            print("Finished Training!")
+            print(f"Model stored at {model_path} - from epoch {best_epoch + 1}")
 
     def print_results(self, flg_te: bool = False, out_folder: str = None):
         """
@@ -289,21 +316,223 @@ class MyNet(nn.Module):
             plt.savefig(os.path.join(out_folder, "acc_vs_epoch.png"))
         plt.show()
 
+    def load_parameters(self, model_path: str, _device=None) -> int:
+        """
+        load_parameters
+        ---
+        Load model parameters from a file, given its path.
+
+        ### Input parameters
+        - model_path: path of the trained model parameters
+
+        ### Output parameter
+        - 1: if success
+        """
+        # Open file
+        if _device is not None:
+            checkpoint = torch.load(model_path, map_location=_device)
+        else:
+            checkpoint = torch.load(model_path, map_location=torch.device("cpu"))
+        # Load parameters
+        # self.load_state_dict(checkpoint["model_state_dict"])
+        self.load_state_dict(checkpoint)
+        # Switch to evaluation mode
+        self.eval()
+
+        self.net_loaded = True
+
+        return 1
+
+    def inference(
+        self, image_path: str, plot: bool = False, img_path: str = None
+    ) -> str:
+        """
+        inference
+        ---
+        Evaluate the NN output given an image (from path).
+
+        ### Input parameters
+        - image_path: path of the image to be classified
+        - plot: flag to display the plot
+        - img_path: if set, save image here
+
+        ### Output parameters
+        - label: label (string), mapped
+        """
+        if not self.net_loaded:
+            raise ValueError("The network is not in evaluation mode!")
+
+        transf = transforms.Compose(
+            [
+                transforms.Resize((200, 200)),
+                transforms.ToTensor(),
+                transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
+            ]
+        )
+
+        image = Image.open(image_path).convert("RGB")
+
+        in_tensor = transf(image)
+        in_batch = in_tensor.unsqueeze(0)
+
+        # Pass through network & get index
+        with torch.no_grad():
+            output = self(in_batch)
+
+        _, pred_idx = torch.max(output, 1)
+
+        # Map index to label
+        pred_label = list(self.class_mapping.keys())[pred_idx]
+
+        if plot:
+            plt.figure(figsize=(10, 6))
+            plt.imshow(np.transpose(in_tensor, (1, 2, 0)) / 2 + 0.5)
+            plt.title(f"Estimated class: {pred_label}")
+            plt.tight_layout()
+            if img_path is not None:
+                plt.savefig(img_path)
+            plt.show()
+
+        return pred_label
+
+
+# +--------------------------------------------------------------------------+
+# |             UTILITIES                                                    |
+# +--------------------------------------------------------------------------+
+
+
+def eval_accuracy(
+    network: MyNet, data_loader: torch.utils.data.DataLoader, _device=None
+):
+    """
+    eval_accuracy
+    ---
+    Return the accuracy of the neural network on input data set.
+
+    ### Input parameters
+    - network: tested neural network (MyNet object)
+    - data_loader: data set on which to evaluate accuracy
+    - mps_dev: if not None, specify MPS device to be used
+
+    ### Output parameter
+    - Accuracy (in percentage)
+    """
+    correct = 0
+    total = 0
+    with torch.no_grad():
+        for data in data_loader:
+            # Iterate on batches
+            inputs, labels = data
+            if _device is not None:
+                # Use GPU if available
+                inputs = inputs.to(_device)
+                labels = labels.to(_device)
+            outputs = network(inputs)
+            # The output is evaluated on current *batch*!
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+    return 100 * correct / total
+
+
+def loadingBar(
+    current_iter: int, tot_iter: int, n_chars: int = 10, ch: str = "=", n_ch: str = " "
+) -> str:
+    """
+    loadingBar
+    ---
+    Produce a loading bar string to be printed.
+
+    ### Input parameters
+    - current_iter: current iteration, will determine the position
+    of the current bar
+    - tot_iter: total number of iterations to be performed
+    - n_chars: total length of the loading bar in characters
+    - ch: character that makes up the loading bar (default: =)
+    - n_ch: character that makes up the remaining part of the bar
+    (default: blankspace)
+    """
+    n_elem = int(current_iter * n_chars / tot_iter)
+    prog = str("".join([ch] * n_elem))
+    n_prog = str("".join([n_ch] * (n_chars - n_elem - 1)))
+    return "[" + prog + n_prog + "]"
+
+
+# +--------------------------------------------------------------------------+
+
+
+def listImages(dir_path):
+    """
+    listImages
+    ---
+    List all the images (PNG, JPG, JPEG) in the given folder.
+
+    It returns a list with the path of all images.
+    """
+    if not os.path.isdir(dir_path):
+        raise NotADirectoryError(f"{dir_path} is not a directory!")
+
+    img_path_list = []
+    for im in os.listdir(dir_path):
+        if im.endswith(".png") or im.endswith(".jpg") or im.endswith(".jpeg"):
+            img_path_list.append(os.path.join(dir_path, im))
+
+    return img_path_list
+
 
 def main():
-    """main"""
+    """
+    Perform inference using the trained model.
+
+    Depending on the command line arguments passed to this script, the
+    behavior will change.
+
+    - No argument: the model will try to perform inference on all the images
+    (PNG, JPEG, JPG) present in the current folder (from which the program is ran)
+    - argv[1] == "rand": inference will be performed on a random image in the 'test' folder
+    - argv[1] == "filename.png": inference will be performed on the specified image
+    """
 
     script_folder = os.path.dirname(__file__)
-    model_path = os.path.join(script_folder, "0602-660603047-MACARIO_ubuntu.ZZZ")
+    test_folder = os.path.join(script_folder, "test")
+    disp_plot = False
 
-    my_nn = MyNet()
+    if len(sys.argv) > 1:
+        if str(sys.argv[1]) == "rand":
+            # Random image among test ones to be tested if no specific path is passed
+            disp_plot = True
+            class_dir = os.path.join(
+                test_folder, random.choice(os.listdir(test_folder))
+            )
+            test_img_path_list = [
+                os.path.join(class_dir, random.choice(os.listdir(class_dir)))
+            ]
+        else:
+            # Specify path of test image as command line argument
+            disp_plot = True
+            test_img_path_list = [str(sys.argv[1])]
+    else:
+        # Classify all (png) images in script folder
+        test_img_path_list = listImages(".")
+
+    if disp_plot:
+        output_img_path = os.path.join(script_folder, "img", "inference.png")
+    else:
+        # No plot displayed if performing inference on many images!
+        output_img_path = None
+
+    model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
+
+    my_nn = MyNet(IMG_SHAPE, CLASS_MAP)
 
     # Load the saved model state dictionary
-    checkpoint = torch.load(model_path)
+    my_nn.load_parameters(model_path)
 
-    # Load the model state dictionary into your model
-    my_nn.load_state_dict(checkpoint["model_state_dict"])
+    for im_pth in test_img_path_list:
+        # Inference:
+        pred_class = my_nn.inference(im_pth, plot=disp_plot, img_path=output_img_path)
+        print(f"{os.path.basename(im_pth)}: {pred_class}")
 
 
-if __name__ + +"__main__":
+if __name__ == "__main__":
     main()

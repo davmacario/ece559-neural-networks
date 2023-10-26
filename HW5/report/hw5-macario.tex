@@ -130,11 +130,33 @@
 
 \section{Introduction}
 
-This homework activity revolved around the implementation of a neural network (NN) in Python using the PyTorch framework.
-The task was the classification of a data set of images of 9 different classes of shapes: Circle, Square, Octagon, Heptagon, Nonagon, Star, Hexagon, Pentagon, Triangle.
-The data set consisted of 10000 images per class, split in 8000 training and 2000 test samples.
+This homework activity revolves around the implementation of a neural network (NN) in Python using the PyTorch framework.
+The task is the classification of a data set of images of 9 different classes of shapes: Circle, Square, Octagon, Heptagon, Nonagon, Star, Hexagon, Pentagon, Triangle.
+The data set consists of 10000 PNG images per class, split in 8000 training and 2000 test samples.
 
 \section{Network implementation}
+
+The network needs to be able to accept as input a $200 \prod 200$ 3-channel (R, G, B) image and return as output anine-dimensional vector.
+The resulting class is decided as the one whose corresponding output has the highest value among all.
+
+\subsection{Network structure}
+
+This section reports the structure of the used neural network.
+
+\begin{itemize}
+  \item The 1\textsuperscript{st} layer is a max-pooling layer with a $4 \prod 4$ kernel and stride length equal to $4$. This achieves a decimation of the image by a factor $4$, making training easier.
+  \item The 2\textsuperscript{nd} layer is a convolutional one, with $5 \prod 5$ kernel and unitary stride length, taking as input the three color channels and returning $20$ feature maps (each of size $46 \prod 46$). This layer uses the ReLU activation function.
+  \item The 3\textsuperscript{rd} layer is a max-pooling layer with $2 \prod 2$ kernel and stride equal to 2, which halves the spatial dimensions of the feature maps, making them $23 \prod 23$.
+  \item The 4\textsuperscript{th} layer is convolutional, producing $50$ feature maps through $5 \prod 5$ kernels moving with unitary stride and yielding $21 \prod 21$ output maps. The activation function is ReLU\@.
+  \item The 5\textsuperscript{th} layer is identical to the 3\textsuperscript{rd} one, and makes the feature maps $10 \prod 10$.
+  \item The 6\textsuperscript{th} layer is convolutional with $3 \prod 3$ kernel and unit stride, and produces $70$ $8 \prod 8$ feature maps from the $50$ accepted as input.
+  \item The 7\textsuperscript{th} layer is again a max pooling layer that halves the spatial dimensions, as the third and fifth. The output consists of $70$ $4 \prod 4$ feature maps.
+  \item The 8\textsuperscript{th} layer is a fully-connected one, accepting $1120 = 70 \cdot 4 \cdot 4$ inputs and producing $120$ outputs. Due to the high number of inputs, dropout was performed on this layer, to prevent overfitting caused by weight co-adaptation.
+  \item The 9\textsuperscript{th} layer is fully connected, with $120$ inputs and $60$ outputs.
+  \item The 10\textsuperscript{th} layer is the output one and it is a fully connected layer accepting $60$ inputs and yielding $9$ outputs (one for each class).
+\end{itemize}
+
+
 
 
 \end{document}

@@ -9,6 +9,11 @@
             "language": "latex",
             "scheme": "file",
             "pattern": "HW4/hw4-macario.tex"
+        },
+        {
+            "language": "latex",
+            "scheme": "file",
+            "pattern": "HW5/report/hw5-macario.tex"
         }
     ]
 }
