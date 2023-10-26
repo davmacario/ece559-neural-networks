@@ -56,9 +56,10 @@ class MyNet(nn.Module):
         self.pool_4 = nn.MaxPool2d(4, 4)
 
         self.conv1 = nn.Conv2d(3, 20, 5)
-        self.conv2 = nn.Conv2d(20, 50, 5)
+        self.conv2 = nn.Conv2d(20, 50, 3)
+        self.conv3 = nn.Conv2d(50, 70, 3)
 
-        self.len_1st_fc = int(50 * 9 * 9)
+        self.len_1st_fc = int(70 * 4 * 4)
         self.fc1 = nn.Linear(self.len_1st_fc, 120)
         self.fc2 = nn.Linear(120, 60)
         self.fc3 = nn.Linear(60, n_classes)
@@ -82,14 +83,16 @@ class MyNet(nn.Module):
         activation function passed to the class constructor.
 
         1. MaxPooling layer, 4x4, stride = 4 - downsampling images by 4 -> (3 x 50 x 50)
-        2. Convolutional layer, 15 feature maps, 5x5 kernel, stride = 1,  -> (15 x 46 x 46)
-        3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (15 x 23 x 23)
-        4. Convolutional layer, 30 feature maps, 5x5 kernel, stride = 1 -> (30 x 19 x 19)
-        5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (30 x 9 x 9)
-        6. Flatten -> (1 x 5000)
-        7. Fully connected layer, 5000 -> 120
-        8. Fully connected layer, 120 -> 60
-        9. Fully connected layer, 60 -> 9 - OUTPUT
+        2. Convolutional layer, 20 feature maps, 5x5 kernel, stride = 1,  -> (20 x 46 x 46)
+        3. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (20 x 23 x 23)
+        4. Convolutional layer, 50 feature maps, 3x3 kernel, stride = 1 -> (50 x 21 x 21)
+        5. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (50 x 10 x 10)
+        6. Convolutional layer, 70 feature maps, 3x3 kernel, stride = 1 -> (70 x 8 x 8)
+        7. MaxPooling layer 2x2, stride = 2 - downsample by 2 -> (70 x 4 x 4)
+        8. Flatten -> (1 x 70*16)
+        9. Fully connected layer, 70*16 -> 120
+        10. Fully connected layer, 120 -> 60
+        11. Fully connected layer, 60 -> 9 - OUTPUT
 
         ---
 
@@ -104,6 +107,7 @@ class MyNet(nn.Module):
         y = self.pool_4(x)
         y = self.pool_halve(self.act_func(self.conv1(y)))
         y = self.pool_halve(self.act_func(self.conv2(y)))
+        y = self.pool_halve(self.act_func(self.conv3(y)))
         if DEBUG:
             print(y.shape)
         y = y.view(-1, self.len_1st_fc)
@@ -206,12 +210,15 @@ class MyNet(nn.Module):
                 self.loss_test[epoch] = loss_te / len(train_dataloader)
 
                 if epoch == 0:
-                    min_loss_test = self.loss_test[epoch]
+                    max_acc_test = self.acc_test[epoch]
                     best_epoch = epoch
 
-                if self.loss_test[epoch] <= min_loss_test:
-                    # The saved model contains the parameters that perform best over the whole training
+                if self.acc_test[epoch] >= max_acc_test:
+                    # The saved model contains the parameters that perform best over
+                    #  the whole training in terms of accuracy on the validation set
                     torch.save(self.state_dict(), model_path)
+                    max_acc_test = self.acc_test[epoch]
+                    best_epoch = epoch
 
                 if VERB:
                     print(
@@ -225,7 +232,7 @@ class MyNet(nn.Module):
 
         if VERB:
             print("Finished Training!")
-            print(f"Model stored at {model_path} - from epoch {best_epoch}")
+            print(f"Model stored at {model_path} - from epoch {best_epoch + 1}")
 
     def print_results(self, flg_te: bool = False, out_folder: str = None):
         """
@@ -367,14 +374,12 @@ def splitDataset(
         if class_labels[class_curr] <= n_train:
             # Place current image in training set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(
-                    tr_path, class_curr, fname)
+                os.path.join(ds_path, fname), os.path.join(tr_path, class_curr, fname)
             )
         else:
             # Place current image in test set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(
-                    te_path, class_curr, fname)
+                os.path.join(ds_path, fname), os.path.join(te_path, class_curr, fname)
             )
 
     return list(class_labels.keys()), tr_path, te_path
@@ -528,7 +533,6 @@ def main():
     train_path = os.path.join(script_folder, "train")
     test_path = os.path.join(script_folder, "test")
     images_folder = os.path.join(script_folder, "img")
-    model_path = os.path.join(script_folder, "0602-660603047-MACARIO_mac.ZZZ")
     n_training = 8000
 
     try:
@@ -541,6 +545,12 @@ def main():
     dl_test, _ = importDataset(test_path)
 
     tr_img, tr_labels = next(iter(dl_train))
+
+    print(classes_map)
+
+    if VERB:
+        # Print the class labels - for inference module
+        print(classes_map)
 
     if DEBUG:
         print(tr_img)
@@ -562,8 +572,8 @@ def main():
     my_nn = MyNet(tr_img.shape[2:4], len(classes_map.keys()))
 
     criterion = nn.CrossEntropyLoss()
-    # optimizer = torch.optim.SGD(my_nn.parameters(), lr=0.01, momentum=0.9)
-    optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001)
+    # Adam optimizer with regularization
+    optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001, weight_decay=1e-5)
 
     # Launch training
 
@@ -571,23 +581,20 @@ def main():
         print("Using MPS!")
         mps_device = torch.device("mps")
         my_nn.to(mps_device)
-        model_path = os.path.join(
-            script_folder, "0602-660603047-MACARIO_mac.ZZZ")
+        model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 20, dl_test, model_path, mps_device
+            dl_train, optimizer, criterion, 40, dl_test, model_path, mps_device
         )
     elif torch.cuda.is_available() and CUDA:
         print("Using CUDA!")
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
-        model_path = os.path.join(
-            script_folder, "0602-660603047-MACARIO_ubuntu_TEST.ZZZ")
+        model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 10, dl_test, model_path, cuda_device
+            dl_train, optimizer, criterion, 40, dl_test, model_path, cuda_device
         )
     else:
-        model_path = os.path.join(
-            script_folder, "0602-660603047-MACARIO_cpu.ZZZ")
+        model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
         my_nn.train_nn(dl_train, optimizer, criterion, 10, dl_test, model_path)
 
     # Print results
