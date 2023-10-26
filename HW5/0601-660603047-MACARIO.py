@@ -64,6 +64,8 @@ class MyNet(nn.Module):
         self.fc2 = nn.Linear(120, 60)
         self.fc3 = nn.Linear(60, n_classes)
 
+        self.do = nn.Dropout(0.2)
+
         # Variables for displaying performance
         self.n_epochs = None
         self.loss_train = None
@@ -71,7 +73,7 @@ class MyNet(nn.Module):
         self.acc_train = None
         self.acc_test = None
 
-    def forward(self, x, softmax_out: bool = False):
+    def forward(self, x, softmax_out: bool = False, dropout: bool = True):
         """
         forward
         ---
@@ -100,6 +102,7 @@ class MyNet(nn.Module):
         - x: input of the network
         - softmax_out: flag to indicate whether to apply softmax function at the
         output of the network
+        - dropout: flag to select dropout
 
         ### Output parameters
         - y: output of the network [array]
@@ -111,6 +114,8 @@ class MyNet(nn.Module):
         if DEBUG:
             print(y.shape)
         y = y.view(-1, self.len_1st_fc)
+        if dropout:
+            y = self.do(y)
         y = self.act_func(self.fc1(y))
         y = self.act_func(self.fc2(y))
         if softmax_out:
