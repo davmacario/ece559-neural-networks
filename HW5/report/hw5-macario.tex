@@ -131,32 +131,98 @@
 \section{Introduction}
 
 This homework activity revolves around the implementation of a neural network (NN) in Python using the PyTorch framework.
-The task is the classification of a data set of images of 9 different classes of shapes: Circle, Square, Octagon, Heptagon, Nonagon, Star, Hexagon, Pentagon, Triangle.
-The data set consists of 10000 PNG images per class, split in 8000 training and 2000 test samples.
+The task is the classification of a data set of images of 9 different classes of shapes: Circle, Square, Octagon, Heptagon, Nonagon, Star, Hexagon, Pentagon, and Triangle.
+The data set consists of 10,000 PNG images per class, split into 8000 training and 2,000 test samples for each.
+Figure\ \ref{fig:images} reports six examples of images to be classified, along with their corresponding label.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.6\linewidth]{../img/train_samples.png}
+  \caption{Sample of input images}\label{fig:images}
+\end{figure}
 
 \section{Network implementation}
 
-The network needs to be able to accept as input a $200 \prod 200$ 3-channel (R, G, B) image and return as output anine-dimensional vector.
+The network needs to be able to accept as input a $200 \times 200$ 3-channel (R, G, B) image and return as output anine-dimensional vector.
 The resulting class is decided as the one whose corresponding output has the highest value among all.
 
-\subsection{Network structure}
+\subsection{Network structure}\label{sec:structure}
 
 This section reports the structure of the used neural network.
 
 \begin{itemize}
-  \item The 1\textsuperscript{st} layer is a max-pooling layer with a $4 \prod 4$ kernel and stride length equal to $4$. This achieves a decimation of the image by a factor $4$, making training easier.
-  \item The 2\textsuperscript{nd} layer is a convolutional one, with $5 \prod 5$ kernel and unitary stride length, taking as input the three color channels and returning $20$ feature maps (each of size $46 \prod 46$). This layer uses the ReLU activation function.
-  \item The 3\textsuperscript{rd} layer is a max-pooling layer with $2 \prod 2$ kernel and stride equal to 2, which halves the spatial dimensions of the feature maps, making them $23 \prod 23$.
-  \item The 4\textsuperscript{th} layer is convolutional, producing $50$ feature maps through $5 \prod 5$ kernels moving with unitary stride and yielding $21 \prod 21$ output maps. The activation function is ReLU\@.
-  \item The 5\textsuperscript{th} layer is identical to the 3\textsuperscript{rd} one, and makes the feature maps $10 \prod 10$.
-  \item The 6\textsuperscript{th} layer is convolutional with $3 \prod 3$ kernel and unit stride, and produces $70$ $8 \prod 8$ feature maps from the $50$ accepted as input.
-  \item The 7\textsuperscript{th} layer is again a max pooling layer that halves the spatial dimensions, as the third and fifth. The output consists of $70$ $4 \prod 4$ feature maps.
-  \item The 8\textsuperscript{th} layer is a fully-connected one, accepting $1120 = 70 \cdot 4 \cdot 4$ inputs and producing $120$ outputs. Due to the high number of inputs, dropout was performed on this layer, to prevent overfitting caused by weight co-adaptation.
-  \item The 9\textsuperscript{th} layer is fully connected, with $120$ inputs and $60$ outputs.
-  \item The 10\textsuperscript{th} layer is the output one and it is a fully connected layer accepting $60$ inputs and yielding $9$ outputs (one for each class).
+  \item The 1\textsuperscript{st} layer is a max-pooling layer with a $4 \times 4$ kernel and stride length equal to $4$. This achieves a decimation of the image by a factor of $4$, making training easier.
+  \item The 2\textsuperscript{nd} layer is a convolutional one, with $5 \times 5$ kernel and unitary stride length, taking as input the three color channels and returning $20$ feature maps (each of size $46 \times 46$). This layer uses the ReLU activation function.
+  \item The 3\textsuperscript{rd} layer is a max-pooling layer with $2 \times 2$ kernel and stride equal to 2, which halves the spatial dimensions of the feature maps, making them $23 \times 23$.
+  \item The 4\textsuperscript{th} layer is convolutional, producing $50$ feature maps through $5 \times 5$ kernels moving with unitary stride and yielding $21 \times 21$ output maps. The activation function is ReLU\@.
+  \item The 5\textsuperscript{th} layer is identical to the 3\textsuperscript{rd} one, and makes the feature maps $10 \times 10$.
+  \item The 6\textsuperscript{th} layer is convolutional with $3 \times 3$ kernel and unit stride, and produces $70$ $8 \times 8$ feature maps from the $50$ accepted as input.
+  \item The 7\textsuperscript{th} layer is again a max pooling layer that halves the spatial dimensions, as the third and fifth. The output consists of $70$ $4 \times 4$ feature maps.
+  \item The 8\textsuperscript{th} layer is a fully-connected one, accepting $1120 = 70 \cdot 4 \cdot 4$ inputs and producing $120$ outputs. Due to the high number of inputs, dropout was performed on this layer, to prevent overfitting caused by weight co-adaptation. The activation function used is ReLU.
+  \item The 9\textsuperscript{th} layer is fully connected, with $120$ inputs and $60$ outputs, using the ReLU activation function.
+  \item The 10\textsuperscript{th} layer is the output one and it is a fully connected layer accepting $60$ inputs and yielding $9$ outputs (one for each class). The output is linear, meaning no activation function is used after the linear combination of the inputs.
 \end{itemize}
 
+This configuration was mainly a result of trial and error, trying to find the best compromise between a good performance on the test (validation) data set and a reasonable training time.
+The general idea was to try to reduce the complexity of the final fully connected layers, as the number of parameters in these is much bigger than in convolutional layers, where the same kernel is translated over the whole input image (for each output feature map).
 
+In particular, the initial design consisted of just two convolutional layers, making the number of inputs of the first fully connected layer much higher ($5000$), which resulted in both longer training time and higher overfitting, due to the larger number of weights.
+
+The issue of overfitting was solved by adding another convolutional layer, reducing drastically the number of inputs of the fully connected layer, and implementing dropout with probability $0.2$ (i.e., at every iteration, each connection was removed with probability $0.2$) at training on this same layer.
+Another procedure that has been used to reduce overfitting is weight regularization, introduced in the optimizer (see\ \ref{sec:tr}).
+
+Concerning the use of max pooling layers, the idea was to simplify the spatial information, making training much faster.
+This has also been observed not to affect performance, meaning that effectively, by reducing the size of the feature maps, it is possible to get rid of redundant information.
+
+\subsection{Training}\label{sec:tr}
+
+This section discusses the chosen training settings.
+
+The AdaM (Adaptive Moment) optimizer was selected instead of a simpler stochastic gradient descent.
+This brought a boost in the performance of about $7$ to $8\, \%$ higher accuracy on the test set.
+Along the optimizer, it was also possible to introduce weight regularization, consisting of the penalization of large model parameters, which reduces overfitting.
+The learning rate of the optimizer has been set to $0.001$, as it has been observed to yield the best results, while the multiplicative constant for regularization was set to $10^{-5}$.
+
+The loss function used as the objective function to be minimized at training consists of the cross entropy loss.
+The ideal output of the network for an input element of class $i$ would be a vector containing all `zeros', but a single `one' in the $i$\textsuperscript{th} position.
+What the cross entropy loss function does is it compares the actual network output with this ideal value, as if they were two probability density functions.
+The mathematical expression is the following:
+
+\begin{equation}
+  \mathcal{L}(\textbf{d}_j, \textbf{y}_j) = - \sum_{c = 1}^{C} \textbf{d}_{j,\ c} \cdot \log{\textbf{y}_{y,\ c}}
+\end{equation}
+
+where $\textbf{d}_j$ is the ideal output (the one-hot vector discussed previously), $\textbf{y}_j$ is the network output in vector form, and the summation is performed over all classes (or all vector components), for a total of $C$ terms.
+In this case, $C = 9$.
+
+Training was performed for $40$ epochs, and it was run on a GPU (\textit{Nvidia GTX 1660 super}).
+Figure\ \ref{fig:acc} reports the values of accuracy over both training and test sets versus the epoch, while figure\ \ref{fig:loss} reports the loss for each epoch over both data sets.
+
+\begin{figure} [ht]
+  \begin{minipage}{0.45\linewidth}
+  \centering
+    \includegraphics[width=\textwidth]{../img/acc_vs_epoch_FINAL.png}
+    \caption{Accuracy vs.\ epoch}\label{fig:acc}
+  \end{minipage}
+  \hspace{0.5cm}
+  \begin{minipage}{0.45\linewidth}
+  \centering
+    \includegraphics[width=\textwidth]{../img/loss_vs_epoch_FINAL.png}
+    \caption{Loss vs.\ epoch}\label{fig:loss}
+  \end{minipage}
+\end{figure}
+
+It is also possible to see that the accuracy of the model on the test set tends to stabilize around $86\%$, with a maximum value of $87.756\%$ at epoch 38.
+The performance on the test set is higher, predictably, and it settles at around $91\%$.\\
+Concerning the loss, as expected the training loss decreases with the number of epochs, meaning that the model is correctly learning from the training images.
+The test loss, instead, does not seem to increase in a relevant way on the test set, which is a good indication of the lack of overfitting.
+Its values converge around $0.1$.
+
+The training program was designed to save the model only if the achieved accuracy on the test set was higher than the best model produced so far, meaning that in the case reported in the figures, the parameters obtained after epoch 38 were stored.
+
+\section{Conclusions}
+
+With over $87\%$ of accuracy on the validation set, the designed network can be deemed adequate for the shape classification problem.\\
 
 
 \end{document}
