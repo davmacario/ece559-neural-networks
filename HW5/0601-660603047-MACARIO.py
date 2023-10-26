@@ -145,8 +145,9 @@ class MyNet(nn.Module):
         - optimizer: training method
         - obj_function: function to be minimized by the training procedure
         - n_epochs: number of training epochs
+        - test_dataloader: if not None, it is the available device that can be used for training (GPU)
         - model_path: path of the output model
-        - mps_device: if passed, specify the presence of MPS (Apple silicon GPU)
+        - _device: if passed, specify the presence of MPS (Apple silicon GPU)
         """
         self.n_epochs = n_epochs
         self.loss_train = np.zeros((n_epochs,))
