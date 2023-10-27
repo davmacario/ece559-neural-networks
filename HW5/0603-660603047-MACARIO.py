@@ -12,6 +12,8 @@ import random
 import shutil
 from typing import Callable
 
+MPS = True
+CUDA = True
 VERB = True
 DEBUG = False
 IMG_SHAPE = (3, 200, 200)
@@ -345,7 +347,7 @@ class MyNet(nn.Module):
         return 1
 
     def inference(
-        self, image_path: str, plot: bool = False, img_path: str = None
+        self, image_path: str, plot: bool = False, img_path: str = None, _device=None
     ) -> str:
         """
         inference
@@ -356,6 +358,7 @@ class MyNet(nn.Module):
         - image_path: path of the image to be classified
         - plot: flag to display the plot
         - img_path: if set, save image here
+        - _device: if not None, indicates the device on which to perform inference (GPU)
 
         ### Output parameters
         - label: label (string), mapped
@@ -374,6 +377,9 @@ class MyNet(nn.Module):
         image = Image.open(image_path).convert("RGB")
 
         in_tensor = transf(image)
+        if _device is not None:
+            in_tensor.to(_device)
+
         in_batch = in_tensor.unsqueeze(0)
 
         # Pass through network & get index
@@ -531,7 +537,25 @@ def main():
 
     for im_pth in test_img_path_list:
         # Inference:
-        pred_class = my_nn.inference(im_pth, plot=disp_plot, img_path=output_img_path)
+        if torch.backends.mps.is_available() and MPS:
+            print("Using MPS")
+            mps_device = torch.device("mps")
+            my_nn.to(mps_device)
+            pred_class = my_nn.inference(
+                im_pth, plot=disp_plot, img_path=output_img_path, _device=mps_device
+            )
+        elif torch.cuda.is_available() and CUDA:
+            print("Using CUDA!")
+            cuda_device = torch.device("cuda")
+            my_nn.to(cuda_device)
+            pred_class = my_nn.inference(
+                im_pth, plot=disp_plot, img_path=output_img_path, _device=cuda_device
+            )
+        else:
+            pred_class = my_nn.inference(
+                im_pth, plot=disp_plot, img_path=output_img_path
+            )
+
         print(f"{os.path.basename(im_pth)}: {pred_class}")
 
 
