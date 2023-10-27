@@ -377,10 +377,10 @@ class MyNet(nn.Module):
         image = Image.open(image_path).convert("RGB")
 
         in_tensor = transf(image)
-        if _device is not None:
-            in_tensor.to(_device)
-
         in_batch = in_tensor.unsqueeze(0)
+
+        if _device is not None:
+            in_batch.to(_device)
 
         # Pass through network & get index
         with torch.no_grad():
