@@ -498,3 +498,12 @@ img
 hw2-macario.pdf
 hw3-macario.pdf
 hw4-macario.pdf
+hw5-macario.pdf
+
+# Dataset folders:
+output/
+train/
+test/
+data/
+
+attempts/
