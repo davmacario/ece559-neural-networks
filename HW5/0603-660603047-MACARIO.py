@@ -332,12 +332,12 @@ class MyNet(nn.Module):
         - 1: if success
         """
         # Open file
-        if _device is not None:
-            checkpoint = torch.load(model_path, map_location=_device)
-        else:
-            checkpoint = torch.load(model_path, map_location=torch.device("cpu"))
+        # if _device is not None:
+        #    checkpoint = torch.load(model_path, map_location=_device)
+        # else:
+        checkpoint = torch.load(model_path, map_location=torch.device("cpu"))
+
         # Load parameters
-        # self.load_state_dict(checkpoint["model_state_dict"])
         self.load_state_dict(checkpoint)
         # Switch to evaluation mode
         self.eval()
@@ -380,14 +380,12 @@ class MyNet(nn.Module):
         in_batch = in_tensor.unsqueeze(0)
 
         if _device is not None:
-            print("Here")
-            in_batch.to(_device)
+            in_batch = in_batch.to(_device)
 
         # Pass through network & get index
         with torch.no_grad():
             output = self(in_batch)
-
-        _, pred_idx = torch.max(output, 1)
+            _, pred_idx = torch.max(output, 1)
 
         # Map index to label
         pred_label = list(self.class_mapping.keys())[pred_idx]
@@ -533,33 +531,28 @@ def main():
 
     my_nn = MyNet(IMG_SHAPE, CLASS_MAP)
 
-    for im_pth in test_img_path_list:
-        # Inference:
-        if torch.backends.mps.is_available() and MPS:
-            print("Using MPS")
-            mps_device = torch.device("mps")
-            my_nn.to(mps_device)
-            # Load the saved model state dictionary
-            my_nn.load_parameters(model_path, _device=mps_device)
-            pred_class = my_nn.inference(
-                im_pth, plot=disp_plot, img_path=output_img_path, _device=mps_device
-            )
-        elif torch.cuda.is_available() and CUDA:
-            print("Using CUDA!")
-            cuda_device = torch.device("cuda")
-            my_nn.to(cuda_device)
-            # Load the saved model state dictionary
-            my_nn.load_parameters(model_path, _device=cuda_device)
-            pred_class = my_nn.inference(
-                im_pth, plot=disp_plot, img_path=output_img_path, _device=cuda_device
-            )
-        else:
-            # Load the saved model state dictionary
-            my_nn.load_parameters(model_path)
-            pred_class = my_nn.inference(
-                im_pth, plot=disp_plot, img_path=output_img_path
-            )
+    if torch.backends.mps.is_available() and MPS:
+        print("Using MPS")
+        avail_device = torch.device("mps")
+        my_nn.to(avail_device)
+        # Load the saved model state dictionary
+        my_nn.load_parameters(model_path, _device=avail_device)
+    elif torch.cuda.is_available() and CUDA:
+        print("Using CUDA!")
+        avail_device = torch.device("cuda")
+        my_nn.to(avail_device)
+        # Load the saved model state dictionary
+        my_nn.load_parameters(model_path, _device=avail_device)
+    else:
+        avail_device = None
+        my_nn.load_parameters(model_path, _device=avail_device)
 
+    # Iterate over images
+    for im_pth in test_img_path_list:
+        pred_class = my_nn.inference(
+            im_pth, plot=disp_plot, img_path=output_img_path, _device=avail_device
+        )
+        # Display result of inference on stdout
         print(f"{os.path.basename(im_pth)}: {pred_class}")
 
 
