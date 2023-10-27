@@ -178,6 +178,10 @@ This has also been observed not to affect performance, meaning that effectively,
 
 This section discusses the chosen training settings.
 
+First, when importing the data sets, the images are normalized on all three input channels to obtain both mean pixel value and variance equal to $0.5$.
+This procedure helps in improving the performance, as it prevents the model from relating the image colors to the class.
+Another approach that has been attempted, but that did not yield the expected improvements, was to convert the images to grayscale at the input.
+
 The AdaM (Adaptive Moment) optimizer was selected instead of a simpler stochastic gradient descent.
 This brought a boost in the performance of about $7$ to $8\, \%$ higher accuracy on the test set.
 Along the optimizer, it was also possible to introduce weight regularization, consisting of the penalization of large model parameters, which reduces overfitting.
