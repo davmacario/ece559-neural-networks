@@ -380,6 +380,7 @@ class MyNet(nn.Module):
         in_batch = in_tensor.unsqueeze(0)
 
         if _device is not None:
+            print("Here")
             in_batch.to(_device)
 
         # Pass through network & get index
@@ -532,15 +533,14 @@ def main():
 
     my_nn = MyNet(IMG_SHAPE, CLASS_MAP)
 
-    # Load the saved model state dictionary
-    my_nn.load_parameters(model_path)
-
     for im_pth in test_img_path_list:
         # Inference:
         if torch.backends.mps.is_available() and MPS:
             print("Using MPS")
             mps_device = torch.device("mps")
             my_nn.to(mps_device)
+            # Load the saved model state dictionary
+            my_nn.load_parameters(model_path, _device=mps_device)
             pred_class = my_nn.inference(
                 im_pth, plot=disp_plot, img_path=output_img_path, _device=mps_device
             )
@@ -548,10 +548,14 @@ def main():
             print("Using CUDA!")
             cuda_device = torch.device("cuda")
             my_nn.to(cuda_device)
+            # Load the saved model state dictionary
+            my_nn.load_parameters(model_path, _device=cuda_device)
             pred_class = my_nn.inference(
                 im_pth, plot=disp_plot, img_path=output_img_path, _device=cuda_device
             )
         else:
+            # Load the saved model state dictionary
+            my_nn.load_parameters(model_path)
             pred_class = my_nn.inference(
                 im_pth, plot=disp_plot, img_path=output_img_path
             )
