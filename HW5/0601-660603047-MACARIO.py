@@ -28,7 +28,7 @@ class MyNet(nn.Module):
     def __init__(
         self,
         input_shape: (int, int),
-        n_classes: int,
+        class_map: dict,
         act_function: Callable = nn.functional.relu,
     ):
         """
@@ -46,7 +46,8 @@ class MyNet(nn.Module):
         super(MyNet, self).__init__()
 
         self.input_size = input_shape
-        self.n_classes = n_classes
+        self.n_classes = len(class_map.keys())
+        self.class_mapping = class_map
 
         # Activation function
         self.act_func = act_function
@@ -62,7 +63,9 @@ class MyNet(nn.Module):
         self.len_1st_fc = int(70 * 4 * 4)
         self.fc1 = nn.Linear(self.len_1st_fc, 120)
         self.fc2 = nn.Linear(120, 60)
-        self.fc3 = nn.Linear(60, n_classes)
+        self.fc3 = nn.Linear(60, self.n_classes)
+
+        self.do = nn.Dropout(0.2)
 
         # Variables for displaying performance
         self.n_epochs = None
@@ -71,7 +74,7 @@ class MyNet(nn.Module):
         self.acc_train = None
         self.acc_test = None
 
-    def forward(self, x, softmax_out: bool = False):
+    def forward(self, x, softmax_out: bool = False, dropout: bool = True):
         """
         forward
         ---
@@ -100,6 +103,7 @@ class MyNet(nn.Module):
         - x: input of the network
         - softmax_out: flag to indicate whether to apply softmax function at the
         output of the network
+        - dropout: flag to select dropout
 
         ### Output parameters
         - y: output of the network [array]
@@ -111,6 +115,8 @@ class MyNet(nn.Module):
         if DEBUG:
             print(y.shape)
         y = y.view(-1, self.len_1st_fc)
+        if dropout:
+            y = self.do(y)
         y = self.act_func(self.fc1(y))
         y = self.act_func(self.fc2(y))
         if softmax_out:
@@ -139,8 +145,9 @@ class MyNet(nn.Module):
         - optimizer: training method
         - obj_function: function to be minimized by the training procedure
         - n_epochs: number of training epochs
+        - test_dataloader: if not None, it is the available device that can be used for training (GPU)
         - model_path: path of the output model
-        - mps_device: if passed, specify the presence of MPS (Apple silicon GPU)
+        - _device: if passed, specify the presence of MPS (Apple silicon GPU)
         """
         self.n_epochs = n_epochs
         self.loss_train = np.zeros((n_epochs,))
@@ -533,7 +540,6 @@ def main():
     train_path = os.path.join(script_folder, "train")
     test_path = os.path.join(script_folder, "test")
     images_folder = os.path.join(script_folder, "img")
-    model_path = os.path.join(script_folder, "0602-660603047-MACARIO_mac.ZZZ")
     n_training = 8000
 
     try:
@@ -546,6 +552,8 @@ def main():
     dl_test, _ = importDataset(test_path)
 
     tr_img, tr_labels = next(iter(dl_train))
+
+    print(classes_map)
 
     if VERB:
         # Print the class labels - for inference module
@@ -568,7 +576,7 @@ def main():
         print(tr_img.shape[2:4])
 
     # Define Neural Network
-    my_nn = MyNet(tr_img.shape[2:4], len(classes_map.keys()))
+    my_nn = MyNet(tr_img.shape[2:4], classes_map)
 
     criterion = nn.CrossEntropyLoss()
     # Adam optimizer with regularization
@@ -576,24 +584,22 @@ def main():
 
     # Launch training
 
+    model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
     if torch.backends.mps.is_available() and MPS:
         print("Using MPS!")
         mps_device = torch.device("mps")
         my_nn.to(mps_device)
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_mac.ZZZ")
         my_nn.train_nn(
-            dl_train, optimizer, criterion, 20, dl_test, model_path, mps_device
+            dl_train, optimizer, criterion, 40, dl_test, model_path, mps_device
         )
     elif torch.cuda.is_available() and CUDA:
         print("Using CUDA!")
         cuda_device = torch.device("cuda")
         my_nn.to(cuda_device)
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_ubuntu.ZZZ")
         my_nn.train_nn(
             dl_train, optimizer, criterion, 40, dl_test, model_path, cuda_device
         )
     else:
-        model_path = os.path.join(script_folder, "0602-660603047-MACARIO_cpu.ZZZ")
         my_nn.train_nn(dl_train, optimizer, criterion, 10, dl_test, model_path)
 
     # Print results
