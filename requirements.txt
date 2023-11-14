@@ -5,3 +5,6 @@ seaborn
 torch
 torchaudio
 torchvision
+pandas
+plotly
+tqdm
