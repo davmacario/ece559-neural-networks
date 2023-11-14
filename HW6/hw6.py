@@ -19,8 +19,12 @@ import torch.optim as optim
 from sklearn.manifold import TSNE
 import plotly.express as px
 
+MPS = True
+CUDA = True
 
-data_dir = "dataset"
+
+script_dir = os.path.dirname(__file__)
+data_dir = os.path.join(script_dir, "dataset")
 ### With these commands the train and test datasets, respectively, are downloaded
 ### automatically and stored in the local "data_dir" directory.
 train_dataset = torchvision.datasets.MNIST(data_dir, train=True, download=True)
@@ -174,7 +178,15 @@ params_to_optimize = [
     {"params": decoder.parameters()},
 ]
 
-device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+if torch.backends.mps.is_available() and MPS:
+    print("Using MPS")
+    device = torch.device("mps")
+elif torch.cuda.is_available() and CUDA:
+    print("Using CUDA")
+    device = torch.device("cuda")
+else:
+    print("Using CPU")
+    device = torch.device("cpu")
 # print(f'Selected device: {device}')
 
 optim = torch.optim.Adam(params_to_optimize, lr=lr)
@@ -200,13 +212,10 @@ def train_epoch_den(
     decoder.train()
     train_loss = []
     # Iterate the dataloader (we do not need the label values, this is unsupervised learning)
-    for (
-        image_batch,
-        _,
-    ) in (
-        dataloader
-    ):  # with "_" we just ignore the labels (the second element of the dataloader tuple)
+    # with "_" we just ignore the labels (the second element of the dataloader tuple)
+    for image_batch, _ in dataloader:
         # Move tensor to the proper device
+        image_batch = image_batch.to(device)
         image_noisy = add_noise(image_batch, noise_factor)
         image_noisy = image_noisy.to(device)
         # Encode data
@@ -254,7 +263,12 @@ def test_epoch_den(encoder, decoder, device, dataloader, loss_fn, noise_factor=0
     return val_loss.data
 
 
-def plot_ae_outputs_den(encoder, decoder, n=5, noise_factor=0.3):
+def plot_ae_outputs_den(
+    encoder, decoder, n=5, noise_factor=0.3, savefig=False, disp=False, epoch_num=None
+):
+    img_folder = os.path.join(os.path.dirname(__file__), "img")
+    if not os.path.exists(img_folder):
+        os.mkdir(img_folder)
     plt.figure(figsize=(10, 4.5))
     for i in range(n):
         ax = plt.subplot(3, n, i + 1)
@@ -289,7 +303,15 @@ def plot_ae_outputs_den(encoder, decoder, n=5, noise_factor=0.3):
     plt.subplots_adjust(
         left=0.1, bottom=0.1, right=0.7, top=0.9, wspace=0.3, hspace=0.3
     )
-    plt.show()
+    plt.tight_layout()
+    if savefig:
+        if epoch_num is None:
+            plt.savefig(os.path.join(img_folder, "autoenc_outputs.png"))
+        else:
+            plt.savefig(os.path.join(img_folder, f"autoenc_outputs_ep{epoch_num}.png"))
+    if disp:
+        plt.show()
+    plt.close()
 
 
 ### Training cycle
@@ -326,10 +348,27 @@ for epoch in range(num_epochs):
             epoch + 1, num_epochs, train_loss, val_loss
         )
     )
-    plot_ae_outputs_den(encoder, decoder, noise_factor=noise_factor)
+    plot_ae_outputs_den(
+        encoder,
+        decoder,
+        noise_factor=noise_factor,
+        savefig=True,
+        disp=False,
+        epoch_num=epoch,
+    )
 
 
 # put your image generator here
+def generateRandomImages(
+    n_img: int, latent_space_dim: int | list[int, int], decoder: Decoder
+) -> torch.tensor:
+    """
+    generateRandomImages
+    ---
+    Generate `n_img` random images through the decoder by feeding it
+    random vectors in the latent space.
+    """
+    pass
 
 
 # put your clustering accuracy calculation here
