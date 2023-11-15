@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 # https://github.com/eugeniaring/Medium-Articles/blob/main/Pytorch/denAE.ipynb
 
+import os  # this module will be used just to create directories in the local filesystem
+import random  # this module will be used to select random samples from a collection
+from typing import List
+
 import matplotlib.pyplot as plt
 import numpy as np  # this module is useful to work with numerical arrays
 import pandas as pd  # this module is useful to work with tabular data
-import random  # this module will be used to select random samples from a collection
-import os  # this module will be used just to create directories in the local filesystem
-from tqdm import tqdm  # this module is useful to plot progress bars
+import plotly.express as px
 import plotly.io as pio
-
 import torch
-import torchvision
-from torchvision import transforms
-from torch.utils.data import DataLoader, random_split
-from torch import nn
 import torch.nn.functional as F
 import torch.optim as optim
+import torchvision
+from sklearn.cluster import KMeans
 from sklearn.manifold import TSNE
-import plotly.express as px
+from torch import nn
+from torch.utils.data import DataLoader, random_split
+from torchvision import transforms
+from tqdm import tqdm  # this module is useful to plot progress bars
 
 MPS = True
 CUDA = True
+EPOCHS = 5  # FIXME: re-set to 30
 
 
 script_dir = os.path.dirname(__file__)
@@ -316,7 +319,7 @@ def plot_ae_outputs_den(
 
 ### Training cycle
 noise_factor = 0.3
-num_epochs = 30
+num_epochs = EPOCHS
 history_da = {"train_loss": [], "val_loss": []}
 
 for epoch in range(num_epochs):
@@ -358,17 +361,132 @@ for epoch in range(num_epochs):
     )
 
 
-# put your image generator here
+# +--------------------------------------------------------------------------+
+# Put your image generator here
+# +--------------------------------------------------------------------------+
+
+
 def generateRandomImages(
-    n_img: int, latent_space_dim: int | list[int, int], decoder: Decoder
-) -> torch.tensor:
+    n_img: int,
+    latent_space_dim: int,
+    decoder: Decoder,
+    device: torch.device,
+) -> torch.Tensor:
     """
     generateRandomImages
     ---
     Generate `n_img` random images through the decoder by feeding it
     random vectors in the latent space.
+
+    ### Input parameters
+    - n_img: number of images to be generated.
+    - latent_space_dim: dimension of the latent space (encoded)
+    - decoder: decoding neural net.
+
+    ### Output parameter
+    - torch.tensor containing the n_img produced outputs (shape:
+    [n_img, 1, 28, 28])
     """
-    pass
+    tensor_shape = (n_img, latent_space_dim)
+    rand_gauss_tensor = torch.randn(tensor_shape)
+    # Move to device
+    rand_gauss_tensor = rand_gauss_tensor.to(device)
+
+    dev_decoder = decoder.to(device)
+    # Feed the random vectors to the decoder to get images
+    outs = dev_decoder(rand_gauss_tensor)
+
+    return outs
 
 
-# put your clustering accuracy calculation here
+# +--------------------------------------------------------------------------+
+
+gener_images = generateRandomImages(9, d, decoder, device)
+# Move generated tensor to CPU
+gener_img_cpu = gener_images.detach().cpu().clone().numpy()
+
+# Plot them in a 3x3 matrix-shaped plot
+fig, axs = plt.subplots(3, 3, figsize=(8, 8))
+
+ind = 0
+for ax in axs.flatten():
+    ax.imshow(
+        np.array(gener_img_cpu[ind].reshape(28, 28)),
+        cmap="gist_gray",
+    )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ind += 1
+fig.suptitle("Random images generated from gaussian noise", fontsize=25)
+plt.tight_layout()
+img_folder = os.path.join(os.path.dirname(__file__), "img")
+plt.savefig(os.path.join(img_folder, "generated_from_decoder.png"))
+plt.show()
+
+# +--------------------------------------------------------------------------+
+# Put your clustering accuracy calculation here
+# +--------------------------------------------------------------------------+
+
+
+def loadingBar(
+    current_iter: int,
+    tot_iter: int,
+    n_chars: int = 10,
+    ch: str = "=",
+    n_ch: str = " ",
+) -> str:
+    """
+    loadingBar
+    ---
+    Produce a loading bar string to be printed.
+
+    ### Input parameters
+    - current_iter: current iteration, will determine the position
+    of the current bar
+    - tot_iter: total number of iterations to be performed
+    - n_chars: total length of the loading bar in characters
+    - ch: character that makes up the loading bar (default: =)
+    - n_ch: character that makes up the remaining part of the bar
+    (default: blankspace)
+    """
+    n_elem = int(current_iter * n_chars / tot_iter)
+    prog = str("".join([ch] * n_elem))
+    n_prog = str("".join([" "] * (n_chars - n_elem - 1)))
+    return "[" + prog + n_prog + "]"
+
+
+# First, obtain all encoder outputs for all elements of the training set
+dl_train_set = torch.utils.data.DataLoader(
+    dataset=train_dataset, batch_size=1, shuffle=False
+)
+encoded_train = []
+labels_train = []
+it = 0
+n_train = len(train_dataset)
+for images, labels in dl_train_set:
+    img, label = images[0].to(device), labels[0].to(device)
+
+    out = encoder(img.unsqueeze(0))
+
+    labels_train.append(labels[0].item())
+    encoded_train.append(out.detach().cpu().clone().numpy().reshape((d,)))
+
+    print(loadingBar(it, n_train, 20), f" {it}/{n_train}", end="\r")
+
+    it += 1
+
+labels_train_arr = np.array(labels_train)
+encoded_train_arr = np.array(encoded_train)
+
+# Apply K-Means clustering on `encoded_train` - the class of the cluster is
+# chosen by majority
+n_clusters = 10
+print("Start clustering                            ")
+clt = KMeans(n_clusters, n_init=10)
+print("Finish clustering")
+clusters_train = clt.fit_predict(encoded_train_arr)
+
+print(labels_train_arr)
+print(clusters_train)
+
+# TODO: map labels to clusters (majority polling)
