@@ -23,7 +23,7 @@ from tqdm import tqdm  # this module is useful to plot progress bars
 
 MPS = True
 CUDA = True
-EPOCHS = 5  # FIXME: re-set to 30
+EPOCHS = 10  # FIXME: re-set to 30
 
 
 script_dir = os.path.dirname(__file__)
@@ -267,7 +267,13 @@ def test_epoch_den(encoder, decoder, device, dataloader, loss_fn, noise_factor=0
 
 
 def plot_ae_outputs_den(
-    encoder, decoder, n=5, noise_factor=0.3, savefig=False, disp=False, epoch_num=None
+    encoder,
+    decoder,
+    n=5,
+    noise_factor=0.3,
+    savefig=False,
+    disp=False,
+    epoch_num=None,
 ):
     img_folder = os.path.join(os.path.dirname(__file__), "img")
     if not os.path.exists(img_folder):
@@ -417,7 +423,7 @@ for ax in axs.flatten():
     ax.set_xticks([])
     ax.set_yticks([])
     ind += 1
-fig.suptitle("Random images generated from gaussian noise", fontsize=25)
+fig.suptitle("Random images generated from gaussian noise", fontsize=20)
 plt.tight_layout()
 img_folder = os.path.join(os.path.dirname(__file__), "img")
 plt.savefig(os.path.join(img_folder, "generated_from_decoder.png"))
@@ -451,18 +457,17 @@ def loadingBar(
     """
     n_elem = int(current_iter * n_chars / tot_iter)
     prog = str("".join([ch] * n_elem))
-    n_prog = str("".join([" "] * (n_chars - n_elem - 1)))
+    n_prog = str("".join([n_ch] * (n_chars - n_elem - 1)))
     return "[" + prog + n_prog + "]"
 
 
 # First, obtain all encoder outputs for all elements of the training set
-dl_train_set = torch.utils.data.DataLoader(
-    dataset=train_dataset, batch_size=1, shuffle=False
-)
+dl_train_set = DataLoader(dataset=train_dataset, batch_size=1, shuffle=False)
 encoded_train = []
 labels_train = []
 it = 0
 n_train = len(train_dataset)
+print("\nExtracting compressed representation of training set elements:")
 for images, labels in dl_train_set:
     img, label = images[0].to(device), labels[0].to(device)
 
@@ -489,4 +494,56 @@ clusters_train = clt.fit_predict(encoded_train_arr)
 print(labels_train_arr)
 print(clusters_train)
 
+
 # TODO: map labels to clusters (majority polling)
+def mapClusters(clusters: np.ndarray, labels: np.ndarray) -> np.ndarray:
+    """
+    Map the cluster labels to the actual class labels of the items.
+
+    The returned array contains in element 'i' the cluster label associated
+    with dataset label 'i'.
+    """
+    clust_labels, counts = np.unique(clusters, return_counts=True)
+    class_labels = np.unique(labels)
+
+    # Ensure the same amount of classes is present
+    assert len(clust_labels) == len(class_labels)
+
+    # Sort the class labels in descending order according to the number of
+    # elements of that cluster.
+    # This way, the clusters with more elements will 'choose' the label first,
+    # contributing to a higher accuracy.
+    clust_labels = clust_labels[np.argsort(-1 * counts)]
+
+    mapping = -1 * np.ones((len(class_labels),), dtype=int)
+    for c in clust_labels:
+        print(f"Cluster {c}\n")
+        assoc_labels = labels[clusters == c]
+        sort_freq = np.argsort(-1 * np.bincount(assoc_labels))
+        # Idea: to prevent assigning 2 clusters the same label, ensure that
+        # label is assigned only if not already taken
+        ind = 0
+        while mapping[sort_freq[ind]] != -1 and ind < len(sort_freq):
+            ind += 1
+            print("\r", "".join(["•"] * ind))
+        print("\n")
+        mapping[sort_freq[ind]] = c
+
+    assert all(mapping != -1)
+
+    return mapping
+
+
+# In cluster_map, element 'i' corresponds the cluster label associated with
+# class 'i' (i.e., the digit 'i')
+cluster_map = mapClusters(clusters_train, labels_train_arr)
+print(cluster_map)
+
+# Evaluate accuracy
+n_exact = 0
+for i in range(len(labels_train_arr)):
+    if cluster_map[labels_train_arr[i]] == clusters_train[i]:
+        n_exact += 1
+
+acc_cluster = n_exact / labels_train_arr.shape[0]
+print(f"Clustering accuracy: {acc_cluster}")

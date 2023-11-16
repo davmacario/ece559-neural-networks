@@ -20,3 +20,6 @@ Explaination of the `hw6.py` script.
   * Move encoder and decoder to device
 * Init. optimizer (Adam, w/ learning rate:`lr`)
 * Def. `add_noise` function
+
+## Explaining mapping algorithm
+
