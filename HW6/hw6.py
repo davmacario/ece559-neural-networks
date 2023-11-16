@@ -547,4 +547,3 @@ for i in range(len(labels_train_arr)):
 
 acc_cluster = n_exact / labels_train_arr.shape[0]
 print(f"Clustering accuracy: {acc_cluster}")
-print()
