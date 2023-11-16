@@ -23,7 +23,7 @@ from tqdm import tqdm  # this module is useful to plot progress bars
 
 MPS = True
 CUDA = True
-EPOCHS = 10  # FIXME: re-set to 30
+EPOCHS = 30  # FIXME: re-set to 30
 
 
 script_dir = os.path.dirname(__file__)
