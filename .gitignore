@@ -530,3 +530,6 @@ data/
 dataset/
 
 attempts/
+
+# 'tmp' files
+tmp.*
