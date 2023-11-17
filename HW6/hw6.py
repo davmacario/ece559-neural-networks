@@ -472,25 +472,29 @@ def loadingBar(
 
 
 # First, obtain all encoder outputs for all elements of the training set
-dl_train_set = DataLoader(dataset=train_data, batch_size=1, shuffle=False)
-encoded_train = []
-labels_train = []
+# dl_train_set = DataLoader(dataset=train_data, batch_size=1, shuffle=False)
+dl_train_set = train_loader
+encoded_images = []
+labels_batches = []
 it = 0
 n_train = len(train_data)
 encoder.eval()
 print("\nExtracting compressed representation of training set elements:")
 with torch.no_grad():
     for images, labels in dl_train_set:
-        img = images[0].to(device)
+        img = images.to(device)
 
         out = encoder(img.unsqueeze(0))
 
-        labels_train.append(labels[0].item())
-        encoded_train.append(out.detach().cpu().clone().numpy().reshape((d,)))
+        labels_batches.append(labels.item())
+        encoded_images.append(out.cpu().numpy())
 
         print(loadingBar(it, n_train, 20), f" {it}/{n_train}", end="\r")
 
         it += 1
+
+encoded_train = np.concatenate(encoded_images)
+labels_train = np.concatenate(labels_batches)
 
 labels_train_arr = np.array(labels_train)
 encoded_train_arr = np.array(encoded_train)
@@ -500,8 +504,8 @@ encoded_train_arr = np.array(encoded_train)
 n_clusters = 10
 print("Start clustering                            ")
 clt = KMeans(n_clusters, n_init=10, max_iter=1000, tol=1e-6)
-print("Finish clustering")
 clusters_train = clt.fit_predict(encoded_train_arr)
+print("Finish clustering")
 
 print(labels_train_arr)
 print(clusters_train)
@@ -528,56 +532,38 @@ def mapClusters(clusters: np.ndarray, labels: np.ndarray) -> np.ndarray:
     clust_labels = clust_labels[np.argsort(-1 * counts)]
 
     mapping = -1 * np.ones((len(class_labels),), dtype=int)
-    mapping_better = -1 * np.ones((len(class_labels),), dtype=int)
-    all_count_labels = [np.zeros((len(class_labels),))] * len(clust_labels)
     for c in clust_labels:
         print(f"Cluster {c} ", end="")
         assoc_labels = labels[clusters == c]
         labels_counts = np.bincount(assoc_labels)
-        sort_freq = np.argsort(-1 * labels_counts)
-
-        # For better one:
+        # If not all classes appear in the current cluster, labels_count has
+        # less than 10 elements (this will break while cycle)
         labels_counts_full = np.zeros((len(class_labels),))
         labels_counts_full[: len(labels_counts)] = labels_counts
-        fract_labels = labels_counts_full  # / len(assoc_labels)
-        all_count_labels[c] = fract_labels
+        sort_freq = np.argsort(-1 * labels_counts_full)
+
         # Idea: to prevent assigning 2 clusters the same label, ensure that
         # label is assigned only if not already taken
         ind = 0
         while ind < len(sort_freq) and mapping[sort_freq[ind]] != -1:
             ind += 1
             print("•", end="")
-        print("\n")
+        print()
         mapping[sort_freq[ind]] = c
 
-    # Using all the sorted fractions, it is possible to assign the labels to
-    # maximize accuracy
-    for cl in class_labels:
-        fractions = np.array([el[cl] for el in all_count_labels])
-        # The index with the max. fraction value will be assoc. to class 'cl'
-        sort_fract = np.argsort(-1 * fractions)
-        ind = 0
-        while mapping_better[cl] == -1:
-            # Asssign the label
-            if sort_fract[ind] not in mapping_better[0 : max(0, cl)]:
-                mapping_better[cl] = sort_fract[ind]
-            else:
-                ind += 1
-                print(">")
-
     assert all(mapping != -1)
-    assert all(mapping_better != -1)
 
-    print("Mappings:")
-    print(mapping)
-    print(mapping_better)
+    if VERB:
+        print("Mappings:")
+        print(mapping)
 
-    return mapping, mapping_better
+    return mapping
 
 
 # In cluster_map, element 'i' corresponds the cluster label associated with
 # class 'i' (i.e., the digit 'i')
-cluster_map, cluster_map_better = mapClusters(clusters_train, labels_train_arr)
+cluster_map = mapClusters(clusters_train, labels_train_arr)
+print("Mappings: {}".format(cluster_map))
 
 # Evaluate accuracy
 n_exact = 0
@@ -588,11 +574,25 @@ for i in range(len(labels_train_arr)):
 acc_cluster = n_exact / labels_train_arr.shape[0]
 print(f"Clustering accuracy: {acc_cluster}")
 
-# Evaluate accuracy (2)
-n_exact = 0
-for i in range(len(labels_train_arr)):
-    if cluster_map_better[labels_train_arr[i]] == clusters_train[i]:
-        n_exact += 1
+# Get centroids of the clusters and generate image of number '5'
+centroids = clt.cluster_centers_
+centr_5 = centroids[cluster_map[5]]
+centr_5 = centr_5.reshape((1, len(centr_5)))
 
-acc_cluster = n_exact / labels_train_arr.shape[0]
-print(f"Clustering accuracy (2): {acc_cluster}")
+if VERB:
+    print(centr_5)
+
+# Make it a tensor
+c5_tens = torch.from_numpy(centr_5)
+c5_tens = c5_tens.to(device)
+decoder.eval()
+out_tens = decoder(c5_tens)
+out_img = out_tens.detach().cpu().clone().numpy()
+out_img = np.squeeze(out_img)
+
+plt.figure()
+plt.imshow(out_img, cmap="gist_gray")
+plt.title("Image generated from centroid of cluster '5'")
+plt.tight_layout()
+plt.savefig(os.path.join(img_folder, "output_n_5.png"))
+plt.show()

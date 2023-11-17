@@ -188,6 +188,40 @@ This would allow to pick specific points within $\mathbb{R}^4$ to generate an im
 
 In order to find these regions, the proposed approach is to perform clustering on the compresser representations of all training elements.
 The $48000$ $4$-dimensional vectors produced can then be used as inputs of K-Means clustering, which returns for each the associated cluster index.
-Since K-Means is agnostic to the labels of the training elements, it is necessary to find an approach to map the obtained clusters to the different training set classes.
+Knowing in advance the number of classes simplifies clustering, since it is possible to set the ``correct'' number of desired clusters without having to perform trial and error.
+
+Since K-Means is agnostic to the labels of the training elements, however, it is necessary to find an approach to map the obtained clusters to the different training set classes in order to maximize the accuracy, evaluated as the number of elements in a cluster that have the same label as the one assigned to the cluster with this procedure.
+The proposed approach is based on assigning to each cluster the label of the class which is most numerous inside the cluster.\\
+However, it is necessary to ensure no two clusters are assigned the same label.
+To take care of this issue while still aiming for maximum accuracy, the idea is to first sort the clusters by decreasing number of elements, and then follow this order for assigning the label.
+Then, when it is time to decide which label to assign the cluster, we evaluate the occurrences of each class in the cluster, and assign the label corresponding to the most frequent class which has not been assigned yet.
+Starting from bigger clusters ensures that ``second choices'' are selected mainly for smaller clusters.\\
+The full algorithm in pseudocode is reported in\ \ref{alg:assign}.
+The result is a \textit{mapping vector} that contains in position $i$ the cluster label associated with class $i$.
+
+\begin{algorithm}
+  \caption{Algorithm for assigning the labels to the clusters}\label{alg:assign}
+  \begin{algorithmic}[line-start-value]
+    \State Get unique clusters and the number of elements of each.
+    \State Get unique labels
+    \State Initialize mapping vector to contain all $-1$'s
+    \For{$c$ in list of unique clusters}
+      \State Get the labels of the elements in cluster $c$
+      \State Count the occurrences of each label
+      \State Sort the labels by decreasing number of occurrences
+      \State Initialize $i = 0$
+      \While{Mapping of the $i$-th label in the sorted list is not $-1$}
+        \State $i++$
+      \EndWhile
+      \State Assign the $i$-th label in the sorted list to cluster $c$
+    \EndFor
+    \State
+    \Return List of mappings
+  \end{algorithmic}
+\end{algorithm}
+
+Following this approach, the achieved accuracy over the training set was $0.71754$ on average over 10 runs.
+
+
 
 \end{document}
