@@ -22,4 +22,3 @@ Explaination of the `hw6.py` script.
 * Def. `add_noise` function
 
 ## Explaining mapping algorithm
-
