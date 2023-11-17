@@ -477,10 +477,16 @@ def loadingBar(
 
 
 def compressDataSet(dl: DataLoader, encoder: Encoder, device: torch.device):
+    """
+    Compress a data set using the encoder.
+
+    ### Input parameters
+    - dl: dataloader containing the
+    """
     encoded_images = []
     labels_batches = []
     it = 0
-    n_train = len(dl.dataset)
+    n_train = len(dl)
     encoder.eval()
     print("\nExtracting compressed representation of training set elements:")
     with torch.no_grad():
@@ -561,10 +567,6 @@ def mapClusters(clusters: np.ndarray, labels: np.ndarray) -> np.ndarray:
 
     assert all(mapping != -1)
 
-    if VERB:
-        print("Mappings:")
-        print(mapping)
-
     return mapping
 
 
@@ -582,25 +584,26 @@ for i in range(len(labels_train_arr)):
 acc_cluster = n_exact / labels_train_arr.shape[0]
 print(f"Clustering accuracy: {acc_cluster}")
 
-# Get centroids of the clusters and generate image of number '5'
+# -----------------------------------------------------------------------------
+# Get centroids of the clusters and generate image of number '0'
 centroids = clt.cluster_centers_
-centr_5 = centroids[cluster_map[5]]
-centr_5 = centr_5.reshape((1, len(centr_5)))
+centr_0 = centroids[cluster_map[0]]
+centr_0 = centr_0.reshape((1, len(centr_0)))
 
 if VERB:
-    print(centr_5)
+    print(centr_0)
 
 # Make it a tensor
-c5_tens = torch.from_numpy(centr_5)
-c5_tens = c5_tens.to(device)
+c0_tens = torch.from_numpy(centr_0)
+c0_tens = c0_tens.to(device)
 decoder.eval()
-out_tens = decoder(c5_tens)
+out_tens = decoder(c0_tens)
 out_img = out_tens.detach().cpu().clone().numpy()
 out_img = np.squeeze(out_img)
 
 plt.figure()
 plt.imshow(out_img, cmap="gist_gray")
-plt.title("Image generated from centroid of cluster '5'")
+plt.title("Image generated from centroid of cluster '0'")
 plt.tight_layout()
 plt.savefig(os.path.join(img_folder, "output_n_5.png"))
 plt.show()
