@@ -25,6 +25,9 @@ MPS = True
 CUDA = True
 EPOCHS = 30  # FIXME: re-set to 30
 
+VERB = True
+PLOTS = False
+
 
 script_dir = os.path.dirname(__file__)
 data_dir = os.path.join(script_dir, "dataset")
@@ -43,7 +46,8 @@ for ax in axs.flatten():
     ax.set_xticks([])
     ax.set_yticks([])
 plt.tight_layout()
-plt.show()
+if PLOTS:
+    plt.show()
 
 train_transform = transforms.Compose(
     [
@@ -66,6 +70,11 @@ m = len(train_dataset)
 # random_split randomly split a dataset into non-overlapping new datasets of given lengths
 # train (55,000 images), val split (5,000 images)
 train_data, val_data = random_split(train_dataset, [int(m - m * 0.2), int(m * 0.2)])
+
+print(f"Data sets:")
+print(f" - Training set: {len(train_data)} elements")
+print(f" - Validation set: {len(val_data)} elements")
+print(f" - Test set: {len(test_dataset)} elements")
 
 batch_size = 256
 
@@ -167,7 +176,6 @@ d = 4
 
 encoder = Encoder(encoded_space_dim=d, fc2_input_dim=128)
 decoder = Decoder(encoded_space_dim=d, fc2_input_dim=128)
-
 
 ### Define the loss function
 loss_fn = torch.nn.MSELoss()
@@ -318,7 +326,7 @@ def plot_ae_outputs_den(
             plt.savefig(os.path.join(img_folder, "autoenc_outputs.png"))
         else:
             plt.savefig(os.path.join(img_folder, f"autoenc_outputs_ep{epoch_num}.png"))
-    if disp:
+    if PLOTS:
         plt.show()
     plt.close()
 
@@ -398,6 +406,7 @@ def generateRandomImages(
     # Move to device
     rand_gauss_tensor = rand_gauss_tensor.to(device)
 
+    decoder.eval()
     dev_decoder = decoder.to(device)
     # Feed the random vectors to the decoder to get images
     outs = dev_decoder(rand_gauss_tensor)
@@ -427,7 +436,8 @@ fig.suptitle("Random images generated from gaussian noise", fontsize=20)
 plt.tight_layout()
 img_folder = os.path.join(os.path.dirname(__file__), "img")
 plt.savefig(os.path.join(img_folder, "generated_from_decoder.png"))
-plt.show()
+if PLOTS:
+    plt.show()
 
 # +--------------------------------------------------------------------------+
 # Put your clustering accuracy calculation here
@@ -462,23 +472,25 @@ def loadingBar(
 
 
 # First, obtain all encoder outputs for all elements of the training set
-dl_train_set = DataLoader(dataset=train_dataset, batch_size=1, shuffle=False)
+dl_train_set = DataLoader(dataset=train_data, batch_size=1, shuffle=False)
 encoded_train = []
 labels_train = []
 it = 0
-n_train = len(train_dataset)
+n_train = len(train_data)
+encoder.eval()
 print("\nExtracting compressed representation of training set elements:")
-for images, labels in dl_train_set:
-    img, label = images[0].to(device), labels[0].to(device)
+with torch.no_grad():
+    for images, labels in dl_train_set:
+        img = images[0].to(device)
 
-    out = encoder(img.unsqueeze(0))
+        out = encoder(img.unsqueeze(0))
 
-    labels_train.append(labels[0].item())
-    encoded_train.append(out.detach().cpu().clone().numpy().reshape((d,)))
+        labels_train.append(labels[0].item())
+        encoded_train.append(out.detach().cpu().clone().numpy().reshape((d,)))
 
-    print(loadingBar(it, n_train, 20), f" {it}/{n_train}", end="\r")
+        print(loadingBar(it, n_train, 20), f" {it}/{n_train}", end="\r")
 
-    it += 1
+        it += 1
 
 labels_train_arr = np.array(labels_train)
 encoded_train_arr = np.array(encoded_train)
@@ -487,7 +499,7 @@ encoded_train_arr = np.array(encoded_train)
 # chosen by majority
 n_clusters = 10
 print("Start clustering                            ")
-clt = KMeans(n_clusters, n_init=10)
+clt = KMeans(n_clusters, n_init=10, max_iter=1000, tol=1e-6)
 print("Finish clustering")
 clusters_train = clt.fit_predict(encoded_train_arr)
 
@@ -516,28 +528,56 @@ def mapClusters(clusters: np.ndarray, labels: np.ndarray) -> np.ndarray:
     clust_labels = clust_labels[np.argsort(-1 * counts)]
 
     mapping = -1 * np.ones((len(class_labels),), dtype=int)
+    mapping_better = -1 * np.ones((len(class_labels),), dtype=int)
+    all_count_labels = [np.zeros((len(class_labels),))] * len(clust_labels)
     for c in clust_labels:
-        print(f"Cluster {c}\n")
+        print(f"Cluster {c} ", end="")
         assoc_labels = labels[clusters == c]
-        sort_freq = np.argsort(-1 * np.bincount(assoc_labels))
+        labels_counts = np.bincount(assoc_labels)
+        sort_freq = np.argsort(-1 * labels_counts)
+
+        # For better one:
+        labels_counts_full = np.zeros((len(class_labels),))
+        labels_counts_full[: len(labels_counts)] = labels_counts
+        fract_labels = labels_counts_full  # / len(assoc_labels)
+        all_count_labels[c] = fract_labels
         # Idea: to prevent assigning 2 clusters the same label, ensure that
         # label is assigned only if not already taken
         ind = 0
-        while mapping[sort_freq[ind]] != -1 and ind < len(sort_freq):
+        while ind < len(sort_freq) and mapping[sort_freq[ind]] != -1:
             ind += 1
-            print("\r", "".join(["•"] * ind))
+            print("•", end="")
         print("\n")
         mapping[sort_freq[ind]] = c
 
-    assert all(mapping != -1)
+    # Using all the sorted fractions, it is possible to assign the labels to
+    # maximize accuracy
+    for cl in class_labels:
+        fractions = np.array([el[cl] for el in all_count_labels])
+        # The index with the max. fraction value will be assoc. to class 'cl'
+        sort_fract = np.argsort(-1 * fractions)
+        ind = 0
+        while mapping_better[cl] == -1:
+            # Asssign the label
+            if sort_fract[ind] not in mapping_better[0 : max(0, cl)]:
+                mapping_better[cl] = sort_fract[ind]
+            else:
+                ind += 1
+                print(">")
 
-    return mapping
+    assert all(mapping != -1)
+    assert all(mapping_better != -1)
+
+    print("Mappings:")
+    print(mapping)
+    print(mapping_better)
+
+    return mapping, mapping_better
 
 
 # In cluster_map, element 'i' corresponds the cluster label associated with
 # class 'i' (i.e., the digit 'i')
-cluster_map = mapClusters(clusters_train, labels_train_arr)
-print(cluster_map)
+cluster_map, cluster_map_better = mapClusters(clusters_train, labels_train_arr)
 
 # Evaluate accuracy
 n_exact = 0
@@ -547,3 +587,12 @@ for i in range(len(labels_train_arr)):
 
 acc_cluster = n_exact / labels_train_arr.shape[0]
 print(f"Clustering accuracy: {acc_cluster}")
+
+# Evaluate accuracy (2)
+n_exact = 0
+for i in range(len(labels_train_arr)):
+    if cluster_map_better[labels_train_arr[i]] == clusters_train[i]:
+        n_exact += 1
+
+acc_cluster = n_exact / labels_train_arr.shape[0]
+print(f"Clustering accuracy (2): {acc_cluster}")
