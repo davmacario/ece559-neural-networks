@@ -87,7 +87,7 @@
 \geometry{letterpaper, portrait, margin=1in}
 \setlength{\headheight}{14.49998pt}
 
-\newcommand\titleofdoc{Homework 6 – GANs and Clustering} %%%%% Title
+\newcommand\titleofdoc{Homework 6 – Denoising Autoencoder and Clustering} %%%%% Title
 \newcommand\GroupName{Davide Macario}
 \newcommand\CurrDate{November 16\textsuperscript{th} 2023}
 
@@ -130,5 +130,64 @@
 
 \section{Introduction}
 
+This homework concerned the analysis of a denoising autoencoder applied on the MNIST data set of handwritten digits.
+The objective was to observe its behavior and evaluate the clusters associated to the different clusters in the latent space of encoded items.
+
+\section{Analysis of the denoising autoencoder}\label{sec:a}
+
+The task of an autoencoder is that of generating images similar to the ones provided as inputs.
+In a denoising autoencoder, noise is added to the target images before passing them to the model. 
+As a result, it is possible to say that the goal of this model would be to remove noise from the input images.
+
+Autoencoder are made up of two parts: the encoder and the decoder.
+In our case, the first one accepts $28 \times 28$ images as inputs, and produces a vector of length 4. 
+Basically, the encoder is able to map the input images to a ``latent space'' of dimension equal to $4$, containing the compressed input representations.
+The encoder consists of a neural network with three convolutional layers (with batch normalization at the second one) and two fully-connected layers, with the last one producing elements in the latent space.\\
+The decoder, instead, starting from elements in the latent space (i.e., outputs of the encoder), builds $28 \times 28$ output images, which should represent itmes similar to the ones provided as inputs.
+The structure of the decoder is opposite to the encoder's, with two fully-connected layers first, then three convolutional-transpose layers, the second one implementing batch normalization.
+
+The ultimate goal is to train the autoencoder to provide output images that can be interpreted as digits, and then, by picking random elements in the latent space, the decoder should be able to generate ``new'' images of digits, different (but similar) to the ones of the data set.
+The use of noisy images at the input (from which the ``denoising'' term) helps in preventing overfitting when training the network, which would make it hard for the network to generalize and produce realistic outputs when providing random inputs at the decoder.
+
+Model training consists of providing as input the training images of the MNIST data set, to which random noise has been added, and comparing the produced output image with the original (noiseless) input.
+The loss function used is the mean-squared error (MSE), while the optimizer for gradient descent is the AdaM optimizer.
+The considered batch size in this experiment is $256$ elements, while the data set sizes are: $48000$ training elements, $12000$ validation elements, and $10000$ test elements.
+
+\section{Batch normalization}\label{sec:b}
+
+As highlighted in\ \ref{sec:a}, both the encoder and the decoder perform \textit{batch normalization} inside.
+Batch normalization is a procedure used in neural networks, especially deep ones, to make training convergence faster.
+It consists of performing normalization, i.e., centering (making the mean value equal to $0$) and re-scaling (making the variance equal to $1$) inside the network, before the next layer.
+The term ``batch'' refers to the fact that the scaling factors (mean value and variance) are evaluated empirically on each individual batch at training.
+
+At the inference stage, instead, the values used for normalization are the mean and variance evaluated over the whole training data set.
+
+The main benefit of batch normalization is to reduce overfitting, by preventing large inputs to propagate through the network.
+Having large intermediate values in a neural network, indeed, implies that small input variations may cause large changes in the output, which corresponds to a bad generalization ability (overfitting).
+
+\section{Random digit generation}\label{sec:c}
+
+Having trained the autoencoder for $30$ epochs, it is possible to experiment with the decoder to see if it is able to generalize correctly and produce plausible output images receiving as inputs random elements from the latent space, i.e., $\mathbb{R}^4$.
+
+In figure\ \ref{fig:rand_digits}, it is possible to see $9$ images that have been created by the decoder when $9$ random gaussian vectors (with zero mean and unit variance) have been passed as inputs.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.6\linewidth]{../img/generated_from_decoder.png}
+  \caption{Randomly-generated digits}\label{fig:rand_digits}
+\end{figure}
+
+It can be seen how some of them are quite recognizable digits, while some other are not.
+Indeed, when the encoder is trained, it maps different input digits to different regions in the latent space, meaning that, in general, images representing the same number will be ``closer together'' in the latent space.
+By picking random values in $\mathbb{R}^4$, it may happen that some are closer to the compressed representations associated with a specific digit, and will then generate output images that are plausible, while other may be located in regions of the latent space where different groups of compressed representations are present, hence they will generate output images that do not represent digits correctly.
+
+\section{Clustering in the latent space}\label{sec:d}
+
+For what discussed in previous section (\ref{sec:c}), it should be possible to analyze the compressed representations of known digits to partition the latent space in regions associated with different digits.
+This would allow to pick specific points within $\mathbb{R}^4$ to generate an image containing a known digit.
+
+In order to find these regions, the proposed approach is to perform clustering on the compresser representations of all training elements.
+The $48000$ $4$-dimensional vectors produced can then be used as inputs of K-Means clustering, which returns for each the associated cluster index.
+Since K-Means is agnostic to the labels of the training elements, it is necessary to find an approach to map the obtained clusters to the different training set classes.
 
 \end{document}
