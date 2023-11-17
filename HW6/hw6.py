@@ -501,6 +501,7 @@ def compressDataSet(dl: DataLoader, encoder: Encoder, device: torch.device):
             print(loadingBar(it, n_train, 20), f" {it}/{n_train}", end="\r")
 
             it += 1
+    print("Done!                                        ")
 
     encoded = np.concatenate(encoded_images)
     labels = np.concatenate(labels_batches)
