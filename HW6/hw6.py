@@ -473,31 +473,39 @@ def loadingBar(
 
 # First, obtain all encoder outputs for all elements of the training set
 # dl_train_set = DataLoader(dataset=train_data, batch_size=1, shuffle=False)
-dl_train_set = train_loader
-encoded_images = []
-labels_batches = []
-it = 0
-n_train = len(train_data)
-encoder.eval()
-print("\nExtracting compressed representation of training set elements:")
-with torch.no_grad():
-    for images, labels in dl_train_set:
-        img = images.to(device)
+# dl_train_set = train_loader
 
-        out = encoder(img.unsqueeze(0))
 
-        labels_batches.append(labels.item())
-        encoded_images.append(out.cpu().numpy())
+def compressDataSet(dl: DataLoader, encoder: Encoder, device: torch.device):
+    encoded_images = []
+    labels_batches = []
+    it = 0
+    n_train = len(dl.dataset)
+    encoder.eval()
+    print("\nExtracting compressed representation of training set elements:")
+    with torch.no_grad():
+        for images, labels in dl:
+            img = images.to(device)
 
-        print(loadingBar(it, n_train, 20), f" {it}/{n_train}", end="\r")
+            out = encoder(img)
 
-        it += 1
+            labels_batches.append(labels)
+            encoded_images.append(out.cpu().numpy())
 
-encoded_train = np.concatenate(encoded_images)
-labels_train = np.concatenate(labels_batches)
+            print(loadingBar(it, n_train, 20), f" {it}/{n_train}", end="\r")
 
-labels_train_arr = np.array(labels_train)
-encoded_train_arr = np.array(encoded_train)
+            it += 1
+
+    encoded = np.concatenate(encoded_images)
+    labels = np.concatenate(labels_batches)
+
+    labels_arr = np.array(labels)
+    encoded_arr = np.array(encoded)
+
+    return encoded_arr, labels_arr
+
+
+encoded_train_arr, labels_train_arr = compressDataSet(train_loader, encoder, device)
 
 # Apply K-Means clustering on `encoded_train` - the class of the cluster is
 # chosen by majority
