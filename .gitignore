@@ -491,6 +491,27 @@ TSWLatexianTemp*
 # Uncomment the next line to have this generated file ignored.
 #*Notes.bib
 
+## Vim
+# Swap
+[._]*.s[a-v][a-z]
+!*.svg  # comment out if you don't need vector files
+[._]*.sw[a-p]
+[._]s[a-rt-v][a-z]
+[._]ss[a-gi-z]
+[._]sw[a-p]
+
+# Session
+Session.vim
+Sessionx.vim
+
+# Temporary
+.netrwhist
+*~
+# Auto-generated tag files
+tags
+# Persistent undo
+[._]*.un~
+
 # Specific folders
 img
 
@@ -499,11 +520,16 @@ hw2-macario.pdf
 hw3-macario.pdf
 hw4-macario.pdf
 hw5-macario.pdf
+hw6-macario.pdf
 
 # Dataset folders:
 output/
 train/
 test/
 data/
+dataset/
 
 attempts/
+
+# 'tmp' files
+tmp.*

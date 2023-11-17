@@ -1,0 +1,453 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+
+\usepackage{hyperref}   % Change color and style of \ref
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    pdftitle={Overleaf Example},
+    pdfpagemode=FullScreen,
+}
+
+\usepackage{graphicx} % Allows you to insert figures
+\graphicspath{ {./images/} } % images are found in this position
+\counterwithin{figure}{section} % Settings for figure numbering
+\counterwithin{figure}{subsection}
+
+\usepackage{amsmath} % Allows you to do equations
+\usepackage{amsfonts} % Contains math. symbols fonts (e.g., 'real numbers' set)
+\usepackage{fancyhdr} % Formats the header
+\usepackage{geometry} % Formats the paper size, orientation, and margins
+\linespread{1.25} % about 1.5 spacing in Word
+\setlength{\parindent}{0pt} % no paragraph indents
+\setlength{\parskip}{1em} % paragraphs separated by one line
+
+\usepackage{enumitem} % Used to reduce whitespace between list elements
+\setlist[itemize]{noitemsep, topsep=0pt} % Set the whitespace above list to the minimum
+
+\usepackage{algorithm}
+\usepackage{algpseudocodex}
+
+\usepackage[style=authoryear-ibid,backend=biber,maxbibnames=99,maxcitenames=2,uniquelist=false,isbn=false,url=true,eprint=false,doi=true,giveninits=true,uniquename=init]{biblatex} % Allows you to do citations - does Harvard style and compatible with Zotero
+\urlstyle{same} % makes a nicer URL and DOI font
+\AtEveryBibitem{
+    \clearfield{urlyear}
+    \clearfield{urlmonth}
+} % removes access date
+\AtEveryBibitem{\clearfield{month}} % removes months in bibliography
+\AtEveryCitekey{\clearfield{month}} % removes months in citations
+\renewbibmacro{in:}{} % Removes the 'In' before journal names
+
+\renewbibmacro*{editorstrg}{%from biblatex.def
+  \printtext[editortype]{%
+    \iffieldundef{editortype}
+      {\ifboolexpr{
+        test {\ifnumgreater{\value{editor}}{1}}
+        or
+        test {\ifandothers{editor}}
+        }
+        {\bibcpstring{editors}}
+        {\bibcpstring{editor}}}
+    {\ifbibxstring{\thefield{editortype}}
+        {\ifboolexpr{
+            test {\ifnumgreater{\value{editor}}{1}}
+            or
+            test {\ifandothers{editor}}
+            }
+            {\bibcpstring{\thefield{editortype}s}}%changed
+          {\bibcpstring{\thefield{editortype}}}}%changed
+        {\thefield{editortype}}}}}
+
+\renewbibmacro*{byeditor+others}{%from biblatex.def
+  \ifnameundef{editor}
+    {}
+    {\printnames[byeditor]{editor}%
+     \addspace%added
+     \mkbibparens{\usebibmacro{editorstrg}}%added
+     \clearname{editor}%
+     \newunit}%
+  \usebibmacro{byeditorx}%
+  \usebibmacro{bytranslator+others}}
+  % The commands above from lines 20-49 change the way editors are displayed in books
+\AtEveryBibitem{%
+  \clearlist{language}%
+} % removes language from bibliography
+% Removes ibids (ibidems)
+\DeclareNameAlias{sortname}{family-given} % Ensures the names of the authors after the first author are in the correct order in the bibliography
+\renewcommand*{\revsdnamepunct}{} % Corrects punctuation for authors with just a first initial
+%\addbibresource{Example.bib} % Tells LaTeX where the citations are coming from. This is imported from Zotero
+\usepackage[format=plain,
+            font=it]{caption} % Italicizes figure captions
+\usepackage[english]{babel}
+\usepackage{csquotes}
+\renewcommand*{\nameyeardelim}{\addcomma\space} % Adds comma in in-text citations
+\renewcommand{\headrulewidth}{0pt}
+\geometry{letterpaper, portrait, margin=1in}
+\setlength{\headheight}{14.49998pt}
+
+\newcommand\titleofdoc{Homework 6 – Denoising Autoencoder and Clustering} %%%%% Title
+\newcommand\GroupName{Davide Macario}
+\newcommand\CurrDate{November 16\textsuperscript{th} 2023}
+
+\begin{document}
+\begin{titlepage}
+   \begin{center}
+        \vspace*{4cm} % Adjust spacings to ensure the title page is generally filled with text
+
+        \Huge{\titleofdoc}
+
+        \vspace{0.5cm}
+        \LARGE{ECE 559 – Neural Networks}
+
+        \vspace{3 cm}
+        \Large{\GroupName\\ }
+        \large{UIN:\@ 660603047}
+
+
+        \vspace{2 cm} % Optional additional info here
+
+
+        \vspace{3 cm}
+        \Large{\CurrDate}
+
+        \vspace{0.25 cm}
+        \Large{Fall 2023}
+
+
+        \vfill
+    \end{center}
+\end{titlepage}
+
+\setcounter{page}{2}
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\thepage}
+\lhead{\GroupName; \titleofdoc}
+
+% Text here
+
+\section{Introduction}
+
+This homework concerned the analysis of a denoising autoencoder applied on the MNIST data set of handwritten digits.
+The objective was to observe its behavior and evaluate the clusters associated to the different clusters in the latent space of encoded items.
+
+\section{Analysis of the denoising autoencoder}\label{sec:a}
+
+The task of an autoencoder is that of generating images similar to the ones provided as inputs.
+In a denoising autoencoder, noise is added to the target images before passing them to the model. 
+As a result, it is possible to say that the goal of this model would be to remove noise from the input images.
+
+Autoencoder are made up of two parts: the encoder and the decoder.
+In our case, the first one accepts $28 \times 28$ images as inputs, and produces a vector of length 4. 
+Basically, the encoder is able to map the input images to a ``latent space'' of dimension equal to $4$, containing the compressed input representations.
+The encoder consists of a neural network with three convolutional layers (with batch normalization at the second one) and two fully-connected layers, with the last one producing elements in the latent space.\\
+The decoder, instead, starting from elements in the latent space (i.e., outputs of the encoder), builds $28 \times 28$ output images, which should represent itmes similar to the ones provided as inputs.
+The structure of the decoder is opposite to the encoder's, with two fully-connected layers first, then three convolutional-transpose layers, the second one implementing batch normalization.
+
+The ultimate goal is to train the autoencoder to provide output images that can be interpreted as digits, and then, by picking random elements in the latent space, the decoder should be able to generate ``new'' images of digits, different (but similar) to the ones of the data set.
+The use of noisy images at the input (from which the ``denoising'' term) helps in preventing overfitting when training the network, which would make it hard for the network to generalize and produce realistic outputs when providing random inputs at the decoder.
+
+Model training consists of providing as input the training images of the MNIST data set, to which random noise has been added, and comparing the produced output image with the original (noiseless) input.
+The loss function used is the mean-squared error (MSE), while the optimizer for gradient descent is the AdaM optimizer.
+The considered batch size in this experiment is $256$ elements, while the data set sizes are: $48000$ training elements, $12000$ validation elements, and $10000$ test elements.
+
+\section{Batch normalization}\label{sec:b}
+
+As highlighted in\ \ref{sec:a}, both the encoder and the decoder perform \textit{batch normalization} inside.
+Batch normalization is a procedure used in neural networks, especially deep ones, to make training convergence faster.
+It consists of performing normalization, i.e., centering (making the mean value equal to $0$) and re-scaling (making the variance equal to $1$) inside the network, before the next layer.
+The term ``batch'' refers to the fact that the scaling factors (mean value and variance) are evaluated empirically on each individual batch at training.
+
+At the inference stage, instead, the values used for normalization are the mean and variance evaluated over the whole training data set.
+
+The main benefit of batch normalization is to reduce overfitting, by preventing large inputs to propagate through the network.
+Having large intermediate values in a neural network, indeed, implies that small input variations may cause large changes in the output, which corresponds to a bad generalization ability (overfitting).
+
+\section{Random digit generation}\label{sec:c}
+
+Having trained the autoencoder for $30$ epochs, it is possible to experiment with the decoder to see if it is able to generalize correctly and produce plausible output images receiving as inputs random elements from the latent space, i.e., $\mathbb{R}^4$.
+
+In figure\ \ref{fig:rand_digits}, it is possible to see $9$ images that have been created by the decoder when $9$ random gaussian vectors (with zero mean and unit variance) have been passed as inputs.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.6\linewidth]{../img/generated_from_decoder.png}
+  \caption{Randomly-generated digits}\label{fig:rand_digits}
+\end{figure}
+
+It can be seen how some of them are quite recognizable digits, while some other are not.
+Indeed, when the encoder is trained, it maps different input digits to different regions in the latent space, meaning that, in general, images representing the same number will be ``closer together'' in the latent space.
+By picking random values in $\mathbb{R}^4$, it may happen that some are closer to the compressed representations associated with a specific digit, and will then generate output images that are plausible, while other may be located in regions of the latent space where different groups of compressed representations are present, hence they will generate output images that do not represent digits correctly.
+
+\section{Clustering in the latent space}\label{sec:d}
+
+For what discussed in previous section (\ref{sec:c}), it should be possible to analyze the compressed representations of known digits to partition the latent space in regions associated with different digits.
+This would allow to pick specific points within $\mathbb{R}^4$ to generate an image containing a known digit.
+
+In order to find these regions, the proposed approach is to perform clustering on the compresser representations of all training elements.
+The $48000$ $4$-dimensional vectors produced can then be used as inputs of K-Means clustering, which returns for each the associated cluster index.
+Knowing in advance the number of classes simplifies clustering, since it is possible to set the ``correct'' number of desired clusters without having to perform trial and error.
+
+Since K-Means is agnostic to the labels of the training elements, however, it is necessary to find an approach to map the obtained clusters to the different training set classes in order to maximize the accuracy, evaluated as the number of elements in a cluster that have the same label as the one assigned to the cluster with this procedure.
+The proposed approach is based on assigning to each cluster the label of the class which is most numerous inside the cluster.\\
+However, it is necessary to ensure no two clusters are assigned the same label.
+To take care of this issue while still aiming for maximum accuracy, the idea is to first sort the clusters by decreasing number of elements, and then follow this order for assigning the label.
+Then, when it is time to decide which label to assign the cluster, we evaluate the occurrences of each class in the cluster, and assign the label corresponding to the most frequent class which has not been assigned yet.
+Starting from bigger clusters ensures that ``second choices'' are selected mainly for smaller clusters.\\
+The full algorithm in pseudocode is reported in\ \ref{alg:assign}.
+The result is a \textit{mapping vector} that contains in position $i$ the cluster label associated with class $i$.
+
+\begin{algorithm}
+  \caption{Algorithm for assigning the labels to the clusters}\label{alg:assign}
+  \begin{algorithmic}[line-start-value]
+    \State Get unique clusters and the number of elements of each.
+    \State Get unique labels
+    \State Initialize mapping vector to contain all $-1$'s
+    \For{$c$ in list of unique clusters}
+      \State Get the labels of the elements in cluster $c$
+      \State Count the occurrences of each label
+      \State Sort the labels by decreasing number of occurrences
+      \State Initialize $i = 0$
+      \While{Mapping of the $i$-th label in the sorted list is not $-1$}
+        \State $i++$
+      \EndWhile
+      \State Assign the $i$-th label in the sorted list to cluster $c$
+    \EndFor
+    \State
+    \Return List of mappings
+  \end{algorithmic}
+\end{algorithm}
+
+Following this approach, the achieved accuracy over the training set was $0.71754$ on average over 10 runs.
+
+\section{Code}
+
+This section contains the code produced for this homework.
+
+\begin{verbatim}
+#!/usr/bin/env python3
+
+import os
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from numpy.typing import NDArray
+from sklearn.cluster import KMeans
+from torch.utils.data import DataLoader
+
+# +--------------------------------------------------------------------------+
+# Put your image generator here
+# +--------------------------------------------------------------------------+
+
+
+def generateRandomImages(
+    n_img: int,
+    latent_space_dim: int,
+    decoder: Decoder,
+    device: torch.device,
+) -> torch.Tensor:
+    """
+    generateRandomImages
+    ---
+    Generate `n_img` random images through the decoder by feeding it
+    random vectors in the latent space.
+
+    ### Input parameters
+    - n_img: number of images to be generated.
+    - latent_space_dim: dimension of the latent space (encoded)
+    - decoder: decoding neural net.
+
+    ### Output parameter
+    - torch.tensor containing the n_img produced outputs (shape:
+    [n_img, 1, 28, 28])
+    """
+    tensor_shape = (n_img, latent_space_dim)
+    rand_gauss_tensor = torch.randn(tensor_shape)
+    # Move to device
+    rand_gauss_tensor = rand_gauss_tensor.to(device)
+
+    decoder.eval()
+    dev_decoder = decoder.to(device)
+    # Feed the random vectors to the decoder to get images
+    outs = dev_decoder(rand_gauss_tensor)
+
+    return outs
+
+
+# +--------------------------------------------------------------------------+
+
+gener_images = generateRandomImages(9, d, decoder, device)
+# Move generated tensor to CPU
+gener_img_cpu = gener_images.detach().cpu().clone().numpy()
+
+# Plot them in a 3x3 matrix-shaped plot
+fig, axs = plt.subplots(3, 3, figsize=(8, 8))
+
+ind = 0
+for ax in axs.flatten():
+    ax.imshow(
+        np.array(gener_img_cpu[ind].reshape(28, 28)),
+        cmap="gist_gray",
+    )
+    ax.set_xticks([])
+    ax.set_yticks([])
+    ind += 1
+fig.suptitle("Random images generated from gaussian noise", fontsize=20)
+plt.tight_layout()
+img_folder = os.path.join(os.path.dirname(__file__), "img")
+plt.savefig(os.path.join(img_folder, "generated_from_decoder.png"))
+plt.show()
+
+# +--------------------------------------------------------------------------+
+# Put your clustering accuracy calculation here
+# +--------------------------------------------------------------------------+
+
+
+def loadingBar(
+    current_iter: int,
+    tot_iter: int,
+    n_chars: int = 10,
+    ch: str = "=",
+    n_ch: str = " ",
+) -> str:
+    """
+    loadingBar
+    ---
+    Produce a loading bar string to be printed.
+
+    ### Input parameters
+    - current_iter: current iteration, will determine the position
+    of the current bar
+    - tot_iter: total number of iterations to be performed
+    - n_chars: total length of the loading bar in characters
+    - ch: character that makes up the loading bar (default: =)
+    - n_ch: character that makes up the remaining part of the bar
+    (default: blankspace)
+    """
+    n_elem = int(current_iter * n_chars / tot_iter)
+    prog = str("".join([ch] * n_elem))
+    n_prog = str("".join([n_ch] * (n_chars - n_elem - 1)))
+    return "[" + prog + n_prog + "]"
+
+
+# First, obtain all encoder outputs for all elements of the training set
+# dl_train_set = DataLoader(dataset=train_data, batch_size=1, shuffle=False)
+# dl_train_set = train_loader
+
+
+def compressDataSet(
+    dl: DataLoader, encoder: Encoder, device: torch.device
+) -> tuple[NDArray, NDArray]:
+    """
+    Compress a data set using the encoder.
+
+    ### Input parameters
+    - dl: dataloader containing the
+    """
+    encoded_images = []
+    labels_batches = []
+    it = 0
+    n_train = len(dl)
+    encoder.eval()
+    print("\nExtracting compressed representation of training set elements:")
+    with torch.no_grad():
+        for images, labels in dl:
+            img = images.to(device)
+
+            out = encoder(img)
+
+            labels_batches.append(labels)
+            encoded_images.append(out.cpu().numpy())
+
+            print(loadingBar(it, n_train, 20), f" {it}/{n_train}", end="\r")
+
+            it += 1
+
+    encoded = np.concatenate(encoded_images)
+    labels = np.concatenate(labels_batches)
+
+    labels_arr = np.array(labels)
+    encoded_arr = np.array(encoded)
+
+    return encoded_arr, labels_arr
+
+
+encoded_train_arr, labels_train_arr = compressDataSet(train_loader, encoder, device)
+
+# Apply K-Means clustering on `encoded_train` - the class of the cluster is
+# chosen by majority
+n_clusters = 10
+print("Start clustering                            ")
+clt = KMeans(n_clusters, n_init=10, max_iter=1000, tol=1e-6)
+clusters_train = clt.fit_predict(encoded_train_arr)
+print("Finish clustering")
+
+print(labels_train_arr)
+print(clusters_train)
+
+
+# TODO: map labels to clusters (majority polling)
+def mapClusters(clusters: np.ndarray, labels: np.ndarray) -> np.ndarray:
+    """
+    Map the cluster labels to the actual class labels of the items.
+
+    The returned array contains in element 'i' the cluster label associated
+    with dataset label 'i'.
+    """
+    clust_labels, counts = np.unique(clusters, return_counts=True)
+    class_labels = np.unique(labels)
+
+    # Ensure the same amount of classes is present
+    assert len(clust_labels) == len(class_labels)
+
+    # Sort the class labels in descending order according to the number of
+    # elements of that cluster.
+    # This way, the clusters with more elements will 'choose' the label first,
+    # contributing to a higher accuracy.
+    clust_labels = clust_labels[np.argsort(-1 * counts)]
+
+    mapping = -1 * np.ones((len(class_labels),), dtype=int)
+    for c in clust_labels:
+        print(f"Cluster {c} ", end="")
+        assoc_labels = labels[clusters == c]
+        labels_counts = np.bincount(assoc_labels)
+        # If not all classes appear in the current cluster, labels_count has
+        # less than 10 elements (this will break while cycle)
+        labels_counts_full = np.zeros((len(class_labels),))
+        labels_counts_full[: len(labels_counts)] = labels_counts
+        sort_freq = np.argsort(-1 * labels_counts_full)
+
+        # Idea: to prevent assigning 2 clusters the same label, ensure that
+        # label is assigned only if not already taken
+        ind = 0
+        while ind < len(sort_freq) and mapping[sort_freq[ind]] != -1:
+            ind += 1
+            print("•", end="")
+        print()
+        mapping[sort_freq[ind]] = c
+
+    assert all(mapping != -1)
+
+    return mapping
+
+
+# In cluster_map, element 'i' corresponds the cluster label associated with
+# class 'i' (i.e., the digit 'i')
+cluster_map = mapClusters(clusters_train, labels_train_arr)
+print("Mappings: {}".format(cluster_map))
+
+# Evaluate accuracy
+n_exact = 0
+for i in range(len(labels_train_arr)):
+    if cluster_map[labels_train_arr[i]] == clusters_train[i]:
+        n_exact += 1
+
+acc_cluster = n_exact / labels_train_arr.shape[0]
+print(f"Clustering accuracy: {acc_cluster}")
+
+\end{verbatim}
+
+\end{document}
