@@ -184,9 +184,9 @@ By picking random values in $\mathbb{R}^4$, it may happen that some are closer t
 \section{Clustering in the latent space}\label{sec:d}
 
 For what discussed in previous section (\ref{sec:c}), it should be possible to analyze the compressed representations of known digits to partition the latent space in regions associated with different digits.
-This would allow to pick specific points within $\mathbb{R}^4$ to generate an image containing a known digit.
+This would allow picking specific points within $\mathbb{R}^4$ to generate an image containing a known digit.
 
-In order to find these regions, the proposed approach is to perform clustering on the compresser representations of all training elements.
+In order to find these regions, the proposed approach is to perform clustering on the compressed representations of all training elements.
 The $48000$ $4$-dimensional vectors produced can then be used as inputs of K-Means clustering, which returns for each the associated cluster index.
 Knowing in advance the number of classes simplifies clustering, since it is possible to set the ``correct'' number of desired clusters without having to perform trial and error.
 
