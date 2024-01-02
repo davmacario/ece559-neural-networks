@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 
-import torch
-from torch import nn
-from torchvision import transforms, datasets
-import matplotlib.pyplot as plt
-import numpy as np
 import os
-import sys
 import random
 import shutil
 from typing import Callable
+
+import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from torch import nn
+from torchvision import datasets, transforms
 
 DEBUG = False
 VERB = True
@@ -263,7 +263,10 @@ class MyNet(nn.Module):
         # Plot loss vs. epoch
         plt.figure(figsize=(10, 8))
         plt.plot(
-            list(range(1, self.n_epochs + 1)), self.loss_train, "b", label="Train loss"
+            list(range(1, self.n_epochs + 1)),
+            self.loss_train,
+            "b",
+            label="Train loss",
         )
         if flg_te:
             plt.plot(
@@ -381,12 +384,14 @@ def splitDataset(
         if class_labels[class_curr] <= n_train:
             # Place current image in training set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(tr_path, class_curr, fname)
+                os.path.join(ds_path, fname),
+                os.path.join(tr_path, class_curr, fname),
             )
         else:
             # Place current image in test set
             shutil.copy(
-                os.path.join(ds_path, fname), os.path.join(te_path, class_curr, fname)
+                os.path.join(ds_path, fname),
+                os.path.join(te_path, class_curr, fname),
             )
 
     return list(class_labels.keys()), tr_path, te_path
@@ -509,7 +514,11 @@ def eval_accuracy(
 
 
 def loadingBar(
-    current_iter: int, tot_iter: int, n_chars: int = 10, ch: str = "=", n_ch: str = " "
+    current_iter: int,
+    tot_iter: int,
+    n_chars: int = 10,
+    ch: str = "=",
+    n_ch: str = " ",
 ) -> str:
     """
     loadingBar
@@ -580,11 +589,13 @@ def main():
 
     criterion = nn.CrossEntropyLoss()
     # Adam optimizer with regularization
-    optimizer = torch.optim.Adam(my_nn.parameters(), lr=0.001, weight_decay=1e-5)
+    optimizer = torch.optim.Adam(
+        my_nn.parameters(), lr=0.001, weight_decay=1e-5
+    )
 
     # Launch training
 
-    model_path = os.path.join(script_folder, "0602-660603047-MACARIO.ZZZ")
+    model_path = os.path.join(script_folder, "0602-660603047-MACARIO_test.ZZZ")
     if torch.backends.mps.is_available() and MPS:
         print("Using MPS!")
         mps_device = torch.device("mps")
